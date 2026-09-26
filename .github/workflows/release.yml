@@ -46,14 +46,14 @@ jobs:
       - run: pnpm run build
       - run: pnpm run test
 
-      - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v1
+      - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          version: pnpm changeset version
-          publish: pnpm changeset publish
-          title: "Version packages"
-          commit: "Version packages"
+          # v2 names; it uses the workflow's GITHUB_TOKEN by default (github-token input).
+          version-script: pnpm changeset version
+          publish-script: pnpm changeset publish
+          pr-title: "Version packages"
+          commit-message: "Version packages"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # npm authenticates this workflow by trusted publishing (OIDC, see docs/releasing.md);
           # there is no npm token.
           NPM_CONFIG_PROVENANCE: "true"

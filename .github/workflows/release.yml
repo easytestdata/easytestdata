@@ -53,7 +53,6 @@ jobs:
           commit: "Version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Only needed for the very first publish; afterwards use npm trusted publishing
-          # (see docs/releasing.md) and delete this secret.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # npm authenticates this workflow by trusted publishing (OIDC, see docs/releasing.md);
+          # there is no npm token.
           NPM_CONFIG_PROVENANCE: "true"

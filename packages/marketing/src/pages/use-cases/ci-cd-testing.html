@@ -1,0 +1,60 @@
+<!--
+title: QBO Test Data for CI/CD Pipelines | EasyTestData
+description: Seeded QuickBooks Online test data in CI: generate fixtures with no QBO at all, or load, test and purge a sandbox with the CLI.
+canonical: /use-cases/ci-cd-testing
+og_type: website
+schema: BreadcrumbList
+-->
+
+<main>
+  <section class="py-16 md:py-20 bg-[#0c1222]">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <p class="text-sm font-semibold text-cyan-400">For CI/CD and DevOps</p>
+      <h1 class="mt-3 text-4xl md:text-5xl font-extrabold text-white tracking-tight">QBO test data as a build step</h1>
+      <p class="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">Same seed, same data, every run. Use fixtures for fast unit tests and a real QuickBooks Online (QBO) sandbox for integration tests.</p>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl font-extrabold text-slate-900">1. Fixtures, no QBO needed</h2>
+      <p class="mt-3 text-slate-600">Generate a pinned dataset in CI and assert against it. Pin the dates as well as the seed so the output doesn't move with the calendar.</p>
+      <pre class="mt-6 text-xs sm:text-sm text-emerald-400 font-mono bg-slate-900 rounded-xl p-4 overflow-x-auto"><code>npx easytestdata generate --template saas --scenario rapid-growth --seed 42 \
+  --start-date 2025-09-01 --end-date 2026-08-31 \
+  --format json --output fixtures/qbo-plan.json</code></pre>
+      <p class="mt-4 text-sm text-slate-600">That file always contains 1,080 invoices, the first one <code>EZTD-INV-0001</code> for Nguyen Media at $10,242.14, and $2,000,000.00 of revenue in total.</p>
+
+      <h2 class="mt-14 text-3xl font-extrabold text-slate-900">2. Load, test, purge against a sandbox</h2>
+      <p class="mt-3 text-slate-600">With the CLI, authorize the sandbox once on your machine (<code>npx easytestdata auth</code>), then give the runner the values it saved to <code>.easytestdata.json</code> as secrets. Treat them like passwords: they include an OAuth refresh token. Pin the CLI version and the start date so every run loads the same books.</p>
+      <pre class="mt-6 text-xs sm:text-sm text-slate-200 font-mono bg-slate-900 rounded-xl p-4 overflow-x-auto"><code><span class="text-slate-500"># .github/workflows/qbo-integration.yml (excerpt)</span>
+env:
+  QBO_CLIENT_ID: ${{ secrets.QBO_CLIENT_ID }}
+  QBO_CLIENT_SECRET: ${{ secrets.QBO_CLIENT_SECRET }}
+  QBO_REFRESH_TOKEN: ${{ secrets.QBO_REFRESH_TOKEN }}
+  QBO_REALM_ID: ${{ secrets.QBO_REALM_ID }}
+
+steps:
+  - name: Load a deterministic year of books
+    run: npx --yes easytestdata@0.1.0 load --template saas --scenario rapid-growth --seed 42 --start-date 2025-09-01 --clear-first
+
+  - name: Run your integration tests
+    run: npm test
+
+  - name: Remove generated data
+    if: always()
+    run: npx --yes easytestdata@0.1.0 purge --mode generated -y</code></pre>
+      <p class="mt-4 text-sm text-slate-500"><code>-y</code> skips the confirmation prompt; without it the CLI refuses to purge in a non-interactive shell. Intuit rotates refresh tokens, so the <a href="{{GITHUB_URL}}/blob/main/examples/github-actions/seed-qbo-sandbox.yml" class="text-blue-700 underline">full workflow in the repository</a> also writes the rotated token back to your secret.</p>
+    </div>
+  </section>
+
+  <section class="bg-[#0c1222] py-16 md:py-20 text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Deterministic, repeatable, scriptable.</h2>
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="/cli" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl no-underline">CLI docs</a>
+        <a href="{{GITHUB_URL}}" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-white/10 border border-white/20 rounded-xl hover:bg-white/15 no-underline">Star on GitHub</a>
+      </div>
+      <p class="mt-5 text-sm text-slate-400">or <a href="{{APP_URL}}/login" class="text-cyan-300 underline underline-offset-2">use EasyTestData Cloud for free</a></p>
+    </div>
+  </section>
+</main>

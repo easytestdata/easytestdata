@@ -1,0 +1,70 @@
+<!--
+title: How It Works | EasyTestData for QuickBooks Online
+description: How EasyTestData fills a QuickBooks Online sandbox: connect a sandbox, pick a template and scenario, load a year of books, then test and purge.
+canonical: /how-it-works
+og_type: website
+-->
+
+<main>
+  <section class="py-16 md:py-20 bg-[#0c1222] text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight">From empty sandbox to a year of books</h1>
+      <p class="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">Four steps, whether you use the CLI, the app on your own computer or EasyTestData Cloud. No manual data entry in your QuickBooks Online (QBO) sandbox.</p>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <ol class="flex flex-col gap-12">
+        <li class="grid grid-cols-[auto_1fr] gap-5">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-extrabold inline-flex items-center justify-center">1</div>
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900">Connect a QBO sandbox</h2>
+            <p class="mt-2 text-slate-600 leading-relaxed">Authorize a sandbox company with Intuit OAuth. On the CLI that's <code>npx easytestdata auth</code> with your Intuit developer app; in the web app, on Cloud or on your own computer, it's a Connect button.</p>
+            <ul class="mt-3 space-y-1.5 text-sm text-slate-600">
+              <li>&#10003; Standard Intuit OAuth 2.0</li>
+              <li>&#10003; Server-side tokens encrypted at rest (AES-256, per-row IV)</li>
+              <li>&#10003; Sandbox companies only, by design</li>
+            </ul>
+          </div>
+        </li>
+        <li class="grid grid-cols-[auto_1fr] gap-5">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-extrabold inline-flex items-center justify-center">2</div>
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900">Pick a template and scenario</h2>
+            <p class="mt-2 text-slate-600 leading-relaxed">Choose one of <a href="/templates" class="text-blue-700 underline">{{TEMPLATE_COUNT}} industry templates and {{SCENARIO_COUNT}} scenarios</a>, or set revenue, target profit, customer count and dates yourself. Add a seed to make it reproducible.</p>
+            <pre class="mt-4 text-xs sm:text-sm text-emerald-400 font-mono bg-slate-900 rounded-lg p-3 overflow-x-auto"><code>npx easytestdata plan --template saas --scenario rapid-growth --seed 42</code></pre>
+          </div>
+        </li>
+        <li class="grid grid-cols-[auto_1fr] gap-5">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-extrabold inline-flex items-center justify-center">3</div>
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900">Load it</h2>
+            <p class="mt-2 text-slate-600 leading-relaxed">EasyTestData creates accounts, customers, vendors, employees and items first, then every transaction type in dependency order, so payments can reference their invoices and deposits their payments. Requests are batched and kept under QBO's API rate limits, with progress as it goes.</p>
+            <pre class="mt-4 text-xs sm:text-sm text-emerald-400 font-mono bg-slate-900 rounded-lg p-3 overflow-x-auto"><code>npx easytestdata load --template saas --scenario rapid-growth --seed 42</code></pre>
+            <p class="mt-3 text-sm text-slate-500">Load time depends on volume and QBO's rate limits; a 12-month run is roughly {{TXN_MIN}}&ndash;{{TXN_MAX}} transactions.</p>
+          </div>
+        </li>
+        <li class="grid grid-cols-[auto_1fr] gap-5">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-extrabold inline-flex items-center justify-center">4</div>
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900">Test, then purge</h2>
+            <p class="mt-2 text-slate-600 leading-relaxed">Run your integration, reports or demo. When you're done, clear what EasyTestData created: everything is tagged <code>EZTD</code>. Purge deletes the transactions it added, makes its customers, vendors, employees and items inactive (accounts stay), and never touches records you made by hand (<a href="/faq#purge" class="text-blue-700 underline">details</a>).</p>
+            <pre class="mt-4 text-xs sm:text-sm text-emerald-400 font-mono bg-slate-900 rounded-lg p-3 overflow-x-auto"><code>npx easytestdata purge --mode generated</code></pre>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="bg-[#0c1222] py-16 md:py-20 text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">See step 2 right now</h2>
+      <p class="mt-3 text-slate-400">The playground generates the same data in your browser.</p>
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="/playground" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl no-underline">Try it in your browser</a>
+        <a href="{{GITHUB_URL}}" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-white/10 border border-white/20 rounded-xl hover:bg-white/15 no-underline">Star on GitHub</a>
+      </div>
+    </div>
+  </section>
+</main>

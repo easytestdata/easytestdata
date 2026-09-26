@@ -1,0 +1,82 @@
+<!--
+title: Testing QuickBooks Online API Integrations: 6 Practices | EasyTestData
+headline: Testing QuickBooks Online API integrations: 6 practices that catch real bugs
+description: Volume, messy receivables, deterministic seeds, pinned dates, clean resets and several industries: how to test a QBO integration against realistic data.
+canonical: /blog/quickbooks-api-testing-best-practices
+og_type: article
+schema: BlogPosting,BreadcrumbList
+date: 2026-09-24
+author: EasyTestData
+tags: testing, qbo api, ci
+excerpt: Three invoices won't find your bugs. Six practices for testing QuickBooks Online integrations, with seeded, reproducible data you can generate in CI.
+-->
+
+<main class="py-12 md:py-16">
+  <article class="max-w-3xl mx-auto px-4 sm:px-6">
+    <header class="mb-10">
+      <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500 mb-4">
+        <time datetime="2026-09-24">September 24, 2026</time>
+        <span aria-hidden="true">&middot;</span>
+        <span>EasyTestData</span>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">Testing QuickBooks Online API integrations: 6 practices that catch real bugs</h1>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">testing</span>
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">qbo api</span>
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">ci</span>
+      </div>
+    </header>
+    <div class="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-700 prose-pre:bg-slate-900 prose-pre:text-slate-200 prose-pre:overflow-x-auto">
+
+      <p>Most QuickBooks Online (QBO) integrations are built against a sandbox with a few hand-made records. They pass the happy path and then meet a customer with years of history. These six practices close that gap. The examples use the open-source <code>easytestdata</code> CLI, but the ideas apply however you produce test data.</p>
+
+      <h2>1. Test with volume, not a handful of records</h2>
+      <p>Pagination, batching and rate-limit handling only fail at scale. The QBO query API returns at most 1,000 rows per page, so any sync that has never seen more than 1,000 invoices has an untested code path. A 12-month <code>rapid-growth</code> run generates 1,080 invoices and 2,854 transactions in total, which is enough to cross that boundary:</p>
+      <pre><code>npx easytestdata load --template saas --scenario rapid-growth --seed 42 --start-date 2025-09-01</code></pre>
+
+      <h2>2. Include the messy receivables and payables</h2>
+      <p>Real books are full of partial payments, credits and refunds, and each one changes an open balance your integration has to get right. The <code>audit-nightmare</code> scenario (messy books: credits, refunds and adjustments) is built for this. For 12 months of the professional services template (seed 42) it produces:</p>
+      <ul>
+        <li>660 invoices: 221 paid in full, 223 partially paid, 216 unpaid</li>
+        <li>71 credit memos and 4 refund receipts</li>
+        <li>120 bills with 98 bill payments and 8 vendor credits</li>
+        <li>A top-8 customer concentration of about 44% of revenue</li>
+      </ul>
+      <p>If your app shows balances or aging, compare its numbers with QBO's own A/R Aging report for the same sandbox. Any difference is a bug in one of those edge cases.</p>
+
+      <h2>3. Make test data deterministic</h2>
+      <p>Randomly generated data makes failures hard to reproduce. With a seed, the same inputs give byte-for-byte identical output:</p>
+      <pre><code>$ npx easytestdata generate --template saas --scenario rapid-growth --seed 42 \
+    --start-date 2025-09-01 --end-date 2026-08-31 --format json --output plan-42.json
+$ jq '.invoices[0] | {docNumber, customerName, txnDate, amount}' plan-42.json
+{
+  "docNumber": "EZTD-INV-0001",
+  "customerName": "Nguyen Media",
+  "txnDate": "2025-09-13",
+  "amount": 10242.14
+}</code></pre>
+      <p>Run it again and you get the same invoice. Change the seed to 43 and the first invoice becomes $14,268.52 for Brooks Builders Inc., dated 2025-09-22. Record the seed in your test so a failure in CI can be reproduced on a laptop.</p>
+
+      <h2>4. Pin the dates, not just the seed</h2>
+      <p>Without explicit dates, the CLI generates the last 12 full months, which means the output moves every month. For fixtures and assertions, pass <code>--start-date</code> and <code>--end-date</code> as above. Use the rolling default when you want "recent" data, for example in a demo company.</p>
+
+      <h2>5. Reset to a known state between runs</h2>
+      <p>Leftovers from a previous run cause false passes and confusing failures. Everything EasyTestData creates is tagged <code>EZTD</code>, so you can clear it and keep the fixtures you created by hand: purge removes everything it added and never touches records you made by hand (<a href="/faq#purge">details</a>). Use a different <code>--tag</code> per dataset if you need to clear them separately.</p>
+      <pre><code>npx easytestdata purge --mode generated
+# or purge and reload in one step
+npx easytestdata load --template saas --scenario rapid-growth --seed 42 --start-date 2025-09-01 --clear-first</code></pre>
+      <p>In CI, run the purge in a step that always executes, even when tests fail, and pass <code>-y</code> because the CLI won't purge without confirmation in a non-interactive shell. The <a href="/use-cases/ci-cd-testing">CI/CD guide</a> has a GitHub Actions example.</p>
+
+      <h2>6. Test more than one kind of business</h2>
+      <p>The mix of transaction types depends on the industry. A restaurant takes most of its revenue through sales receipts; a construction company issues estimates and purchase orders on most jobs and gets paid slowly. With seed 42 and 12 months:</p>
+      <ul>
+        <li><code>--template restaurant --scenario healthy-small</code>: 85% of revenue from cash sales, 14 purchase orders, no estimates</li>
+        <li><code>--template construction --scenario cash-crisis</code>: 246 estimates, 36 purchase orders, and 149 of 336 invoices still unpaid</li>
+      </ul>
+      <p>Running your suite against two or three templates catches assumptions like "every sale has an invoice" before a customer does.</p>
+
+      <h2>Try it</h2>
+      <p>You can explore all {{TEMPLATE_COUNT}} templates and {{SCENARIO_COUNT}} scenarios in the <a href="/playground">playground</a> without installing anything, then copy the matching CLI command. EasyTestData is open source under Apache-2.0 on <a href="https://github.com/easytestdata/easytestdata">GitHub</a>.</p>
+    </div>
+  </article>
+</main>

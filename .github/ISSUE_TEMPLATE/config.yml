@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/easytestdata/easytestdata/discussions
+    about: Ask a question or share an idea in GitHub Discussions.
+  - name: Report a security vulnerability
+    url: https://github.com/easytestdata/easytestdata/security/advisories/new
+    about: Please report vulnerabilities privately, not in a public issue.
+  - name: EasyTestData Cloud account help
+    url: mailto:support@easytestdata.com
+    about: Account or data questions about EasyTestData Cloud.

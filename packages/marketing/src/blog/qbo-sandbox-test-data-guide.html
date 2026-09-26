@@ -1,0 +1,92 @@
+<!--
+title: How to Fill a QuickBooks Online Sandbox with a Year of Test Data | EasyTestData
+headline: How to fill a QuickBooks Online sandbox with a year of test data
+description: Step by step: generate a year of coherent books with the open-source easytestdata CLI, load it into a QBO sandbox, check it, and purge it.
+canonical: /blog/qbo-sandbox-test-data-guide
+og_type: article
+schema: BlogPosting,BreadcrumbList
+date: 2026-09-24
+author: EasyTestData
+tags: tutorial, cli, sandbox
+excerpt: Generate a year of financially coherent books with the open-source CLI, preview them, load them into a QuickBooks Online sandbox, and purge them when you're done. Real commands, real output.
+-->
+
+<main class="py-12 md:py-16">
+  <article class="max-w-3xl mx-auto px-4 sm:px-6">
+    <header class="mb-10">
+      <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500 mb-4">
+        <time datetime="2026-09-24">September 24, 2026</time>
+        <span aria-hidden="true">&middot;</span>
+        <span>EasyTestData</span>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">How to fill a QuickBooks Online sandbox with a year of test data</h1>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">tutorial</span>
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">cli</span>
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">sandbox</span>
+      </div>
+    </header>
+    <div class="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-700 prose-pre:bg-slate-900 prose-pre:text-slate-200 prose-pre:overflow-x-auto">
+
+      <p>A new QuickBooks Online (QBO) sandbox company gives you Intuit's small demo dataset. It's fine for clicking around, but it won't tell you how your integration behaves with a hundred customers, a year of invoices, partial payments and payroll. This guide uses the open-source <code>easytestdata</code> CLI to generate that year of books, load it into a sandbox, and remove it again.</p>
+      <p>You'll need Node.js 22.13 or newer and, for the loading steps, a free <a href="https://developer.intuit.com">Intuit developer account</a> with a sandbox company.</p>
+
+      <h2>1. Preview the data (no install)</h2>
+      <p>If you just want to see what gets generated, open the <a href="/playground?template=saas&amp;preset=rapid-growth&amp;seed=42&amp;months=12">playground</a>. It runs the same engine in your browser and shows the counts, a monthly revenue and expense chart, and the first rows of each table.</p>
+
+      <h2>2. Generate it locally</h2>
+      <p>Pick one of the {{TEMPLATE_COUNT}} industry templates and one of the {{SCENARIO_COUNT}} scenarios (the <code>--scenario</code> flag). Here's a fast-growing SaaS company:</p>
+      <pre><code>npx easytestdata generate --template saas --scenario rapid-growth --seed 42 --start-date 2025-09-01 --format csv --output ./sample-data</code></pre>
+      <p>Without <code>--start-date</code> the CLI covers the last 12 full months, so the output would move with the calendar; pinning it to September 2025 makes the data span September 2025 to August 2026 on any day. You get one CSV per record type, with line items in their own files:</p>
+      <pre><code>$ ls sample-data
+bill_lines.csv     deposits.csv         journal_entries.csv  sales_receipts.csv
+bill_payments.csv  direct_expenses.csv  payments.csv         transfers.csv
+bills.csv          employees.csv        payroll_lines.csv    vendor_credits.csv
+credit_memos.csv   estimates.csv        payroll_runs.csv     vendors.csv
+customers.csv      invoice_lines.csv    purchase_orders.csv
+deposit_lines.csv  invoices.csv         refund_receipts.csv
+
+$ head -4 sample-data/invoices.csv
+doc_number,customer,txn_date,due_date,amount
+EZTD-INV-0001,Nguyen Media,2025-09-13,2025-10-13,10242.14
+EZTD-INV-0002,Reyes Architects,2025-09-16,2025-10-16,9268.4
+EZTD-INV-0003,Sullivan Distribution,2025-09-09,2025-09-24,6928</code></pre>
+      <p>What's in this run:</p>
+      <ul>
+        <li><strong>90 customers, 10 vendors, 30 employees</strong> with realistic names, addresses, emails and phone numbers (for example <em>Nguyen Media</em> and <em>Coleman Data Centers Co.</em>)</li>
+        <li><strong>1,080 invoices</strong> and 132 sales receipts totaling exactly $2,000,000.00 of revenue</li>
+        <li><strong>952 customer payments</strong>: 785 invoices paid in full, 167 partially paid, 128 still open</li>
+        <li><strong>120 bills</strong>, 102 bill payments, 48 direct expenses and 24 semi-monthly payroll runs, totaling $1,880,000.00 of expenses, which leaves the scenario's $120,000.00 target profit</li>
+        <li>58 credit memos, 4 refund receipts, 1 vendor credit, 205 estimates, 4 purchase orders, 89 deposits, 18 transfers and 17 journal entries</li>
+      </ul>
+      <p>That's 2,854 transactions. Other scenarios are smaller: <code>new-company</code> produces around 450, <code>healthy-small</code> around 750, and <code>quick-demo</code> covers just three months for a fast first load. Use <code>--format json</code> if you'd rather have one file.</p>
+
+      <h2>3. Connect your sandbox</h2>
+      <p>In the Intuit developer portal, open your app's Development keys and add this redirect URI:</p>
+      <pre><code>http://localhost:8085/callback</code></pre>
+      <p>Then run <code>auth</code> with the app's Client ID and Client Secret. The CLI opens an OAuth flow in your browser; choose your sandbox company.</p>
+      <pre><code>export QBO_CLIENT_ID=...
+export QBO_CLIENT_SECRET=...
+npx easytestdata auth</code></pre>
+      <p>The connection is saved to <code>.easytestdata.json</code> in the current directory. It contains OAuth tokens, so add it to <code>.gitignore</code>.</p>
+
+      <h2>4. Load</h2>
+      <p>Do a dry run first to see what would be created, then load for real with the same flags:</p>
+      <pre><code>npx easytestdata load --template saas --scenario rapid-growth --seed 42 --start-date 2025-09-01 --dry-run
+npx easytestdata load --template saas --scenario rapid-growth --seed 42 --start-date 2025-09-01</code></pre>
+      <p>EasyTestData creates the accounts, customers, vendors, employees and service items first, then each transaction type in dependency order, so payments reference their invoices and deposits reference their payments. Requests are batched and kept under QBO's API rate limit, so a large scenario takes a while. Start with <code>--scenario quick-demo</code> if you want a quicker first run.</p>
+
+      <h2>5. Check it in QBO</h2>
+      <p>In the sandbox, open the customer list, the A/R aging report and the Profit and Loss report for the generated period. You should see the customers, a spread of paid, partially paid and open invoices, payroll checks twice a month and a depreciation entry each month. The profit on the report lands a little below the $120,000 target; the <a href="/faq#profit">FAQ explains why</a>.</p>
+
+      <h2>6. Clear it</h2>
+      <p>When you're done, clear what EasyTestData created. Purge deletes the transactions it added, makes its customers, vendors, employees and items inactive (accounts stay), and never touches records you made by hand (<a href="/faq#purge">details</a>). If you load several datasets with different <code>--tag</code> values, purge each by its tag.</p>
+      <pre><code>npx easytestdata purge --mode generated</code></pre>
+      <p>To start over with a different scenario in one step, use <code>--clear-first</code> on the next load:</p>
+      <pre><code>npx easytestdata load --template construction --scenario cash-crisis --seed 7 --clear-first</code></pre>
+
+      <h2>Don't want to run it yourself?</h2>
+      <p>The same engine is available as a web app. <a href="/run-locally">Run it on your own computer</a> for free with no limits (<code>npx easytestdata ui</code>), or use <a href="{{APP_URL}}/login">EasyTestData Cloud</a>, which is free. Everything is open source under Apache-2.0 on <a href="https://github.com/easytestdata/easytestdata">GitHub</a>.</p>
+    </div>
+  </article>
+</main>

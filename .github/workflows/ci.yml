@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    # No database service: server tests use PGlite (embedded Postgres) or mocks.
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.4
+
+      # The project builds and deploys on Node 24 (see .nvmrc); node-22 below keeps users on 22.13+ working.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run lint
+
+      - run: pnpm run format:check
+
+      - run: pnpm run build
+
+      # Installs the packed npm tarballs outside the workspace and runs `easytestdata ui`.
+      - run: pnpm run test:packed
+
+      - run: pnpm run test
+
+  # The published packages support Node 22.13+ (engines), so they must build, install and pass
+  # their tests on exactly that minimum (a bare "22" would resolve to the newest 22.x).
+  node-22:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build
+
+      - run: pnpm run test:packed
+
+      - run: pnpm run test

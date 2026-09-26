@@ -1,0 +1,127 @@
+<!--
+title: FAQ | EasyTestData for QuickBooks Online
+description: Answers about EasyTestData: what it generates, why it can only touch QBO sandboxes, what purge removes, the Apache-2.0 license, local use and free Cloud.
+canonical: /faq
+og_type: website
+schema: FAQPage
+-->
+
+<main>
+  <section class="py-16 md:py-20 bg-[#0c1222] text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight">Frequently asked questions</h1>
+      <p class="mt-4 text-lg text-slate-400">About EasyTestData, QuickBooks Online (QBO) sandboxes, and EasyTestData Cloud.</p>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6">
+      <h2 class="text-xl font-bold text-slate-900 mb-4">General</h2>
+      <div class="flex flex-col gap-3 mb-12">
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">What is EasyTestData?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>EasyTestData is an open-source generator that fills a QBO sandbox with a year of financially coherent books (customers, invoices, bills, payments, payroll) and purges it cleanly when you're done. It ships {{TEMPLATE_COUNT}} industry templates, {{SCENARIO_COUNT}} scenarios and 15 transaction types.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">Who is it for?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>Developers building QBO integrations, QA engineers, CI pipelines, and consultants or trainers who need a realistic sandbox company for a demo or a class.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">Is it really open source?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>Yes. Every package in the repository (generation engine, QBO client, CLI, API server and web app) is licensed under Apache-2.0. You can run all of it on your own computer with no limits.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">What is EasyTestData Cloud?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>A hosted instance of the same open-source code at easytestdata.com, so you don't have to run the server, database and Intuit app yourself. It's free.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">Is it free?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>Yes. EasyTestData is open source (Apache-2.0). Run it locally with no limits, or use EasyTestData Cloud for free, with generous limits to prevent abuse.</p></div>
+        </details>
+      </div>
+
+      <h2 class="text-xl font-bold text-slate-900 mb-4">The data</h2>
+      <div class="flex flex-col gap-3 mb-12">
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">How realistic is the generated data?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>The records are synthetic, but the relationships are coherent: invoices and sales receipts sum to the revenue target, bills, expenses and payroll sum to the expense budget, and payments, credit memos and bill payments reference real invoices and bills. Customers, vendors and employees get realistic names, addresses, emails and phone numbers, and every generated record is tagged so it can be found and purged.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">How much data does a run create?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>For 12 months, roughly {{TXN_MIN}} transactions for the smallest scenario up to about {{TXN_MAX}} for the largest, plus 15 to 130 customers, vendors and employees. The quick-demo scenario covers three months and is the fastest first load. You can preview exact counts in the <a href="/playground">playground</a>.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">Does it work with production QBO companies?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>No, and it can't. Every request goes through <code>assertSandboxBaseUrl</code> in <a href="https://github.com/easytestdata/easytestdata/blob/main/packages/qbo-client/src/qbo-client.js">qbo-client.js</a>, which refuses any host other than <code>sandbox-quickbooks.api.intuit.com</code>; the production QuickBooks address doesn't appear anywhere in the source code, and the tests use it only to prove the check rejects it. On top of that, Intuit development keys can only authorize sandbox companies, and the only OAuth scope requested is <code>com.intuit.quickbooks.accounting</code>. Never load generated data into real books.</p></div>
+        </details>
+        <details id="profit" class="group border border-slate-200 rounded-xl overflow-hidden scroll-mt-20">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">Why does profit in QuickBooks differ?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>The headline number is a target profit before credits, refunds and adjustments: revenue and expenses are allocated to hit it exactly. QBO's Profit and Loss report then subtracts the credit memos, refunds, vendor credits and depreciation entries that make the books realistic, so it lands a bit lower.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">Which countries are supported?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>US-first. UK, Australian and Canadian locales are newer and less tested: they change employee names, addresses, currency and payment terms, but loading into non-US QBO sandboxes hasn't been verified yet.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">What does "deterministic seed" mean?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>With the same template, scenario, date range and <code>--seed</code>, you get identical data every time, on any machine. That makes failing tests reproducible.</p></div>
+        </details>
+        <details id="purge" class="group border border-slate-200 rounded-xl overflow-hidden scroll-mt-20">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">What does purge remove, exactly?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>Everything EasyTestData creates is tagged (default <code>EZTD</code>). <code>easytestdata purge --mode generated</code> deletes the transactions it tagged and makes the customers, vendors, employees and items it created inactive, because QuickBooks doesn't allow deleting those. The accounts it created stay. Anything you created by hand is left alone. If you load two datasets with different tags, purge them separately by tag.</p></div>
+        </details>
+      </div>
+
+      <h2 class="text-xl font-bold text-slate-900 mb-4">Security</h2>
+      <div class="flex flex-col gap-3 mb-12">
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">How are QBO tokens stored?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>In the web app, on EasyTestData Cloud or on your own computer, a connection stores the sandbox's realm ID, its company name and the OAuth tokens, encrypted at rest with AES-256-GCM and a per-row initialization vector. Disconnecting the sandbox deletes them. The CLI stores its connection in <code>.easytestdata.json</code> on your machine; keep that file out of version control.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">What does EasyTestData do in my sandbox?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>It creates accounts, customers, vendors, employees, items and transactions; reads what it needs to look up accounts and find tagged records; and deletes or inactivates records only when you run a purge.</p></div>
+        </details>
+      </div>
+
+      <h2 class="text-xl font-bold text-slate-900 mb-4">EasyTestData Cloud limits</h2>
+      <div class="flex flex-col gap-3 mb-12">
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">What are the Cloud limits?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>{{CLOUD_LIMITS}}</p></div>
+        </details>
+      </div>
+
+      <h2 class="text-xl font-bold text-slate-900 mb-4">Technical</h2>
+      <div class="flex flex-col gap-3">
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">How do I create, reset or refill a QBO sandbox?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>Sandboxes come from a free Intuit developer account. <a href="/blog/quickbooks-online-sandbox-guide">The sandbox guide</a> covers creating one, logging in, resetting it and filling it with EasyTestData; <a href="/blog/reset-quickbooks-sandbox-and-refill">the reset guide</a> is the short version for starting over in minutes.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">Is there a CLI?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>Yes: <code>npx easytestdata</code>, with <code>generate</code>, <code>auth</code>, <code>load</code>, <code>purge</code>, <code>templates</code>, <code>presets</code> and <code>plan</code> commands. See the <a href="/cli">CLI page</a>.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">Can I automate it?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>Yes, with the CLI: <code>easytestdata load</code> and <code>easytestdata purge</code> run in any CI pipeline. The <a href="/use-cases/ci-cd-testing">CI/CD page</a> has a complete workflow.</p></div>
+        </details>
+        <details class="group border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-5 sm:px-6 py-4 cursor-pointer bg-white hover:bg-slate-50 font-semibold text-slate-900 text-sm list-none">How long does a load take?<span aria-hidden="true" class="text-slate-400 text-lg ml-4 group-open:rotate-45 transition-transform">+</span></summary>
+          <div class="px-5 sm:px-6 pb-4 text-sm text-slate-600 leading-relaxed"><p>It depends on how many records you generate and on QBO's API rate limit, which EasyTestData stays under automatically (with batching and retries). Smaller scenarios load much faster than the largest ones (start with the quick demo); generating the data itself takes milliseconds.</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-[#0c1222] py-16 md:py-20 text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Still have a question?</h2>
+      <p class="mt-3 text-slate-400">Ask in <a href="{{GITHUB_URL}}/discussions" class="text-cyan-300 underline underline-offset-2">GitHub Discussions</a>. Found a bug? <a href="{{GITHUB_URL}}/issues/new/choose" class="text-cyan-300 underline underline-offset-2">Open an issue</a>. For EasyTestData Cloud account questions, email <a href="mailto:{{CONTACT_EMAIL}}" class="text-cyan-300 underline underline-offset-2">{{CONTACT_EMAIL}}</a>.</p>
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="/playground" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl no-underline">Try it in your browser</a>
+        <a href="{{GITHUB_URL}}/discussions" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-white/10 border border-white/20 rounded-xl hover:bg-white/15 no-underline">GitHub Discussions</a>
+      </div>
+    </div>
+  </section>
+</main>

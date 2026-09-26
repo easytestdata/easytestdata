@@ -1,0 +1,54 @@
+{
+  "name": "@easytestdata/core",
+  "version": "0.1.0",
+  "description": "Realistic test data for QuickBooks Online sandboxes: the EasyTestData engine that generates financially coherent synthetic accounting data.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/easytestdata/easytestdata.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://easytestdata.com",
+  "bugs": {
+    "url": "https://github.com/easytestdata/easytestdata/issues"
+  },
+  "author": "EasyTestData",
+  "keywords": [
+    "quickbooks",
+    "quickbooks-online",
+    "qbo",
+    "test-data",
+    "synthetic-data",
+    "fake-data",
+    "fixtures",
+    "seed-data",
+    "accounting",
+    "bookkeeping",
+    "financial-data",
+    "invoices",
+    "sandbox",
+    "data-generator"
+  ],
+  "files": [
+    "src",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "echo \"No build step\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
+  }
+}

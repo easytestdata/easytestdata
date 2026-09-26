@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Document shape -->
+  <path d="M6 3a2 2 0 0 0-2 2v22a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V10l-7-7H6z" fill="#2563eb"/>
+  <!-- Folded corner -->
+  <path d="M21 3v5a2 2 0 0 0 2 2h5L21 3z" fill="#93bbfd"/>
+  <!-- Data rows (representing test data) -->
+  <rect x="8" y="14" width="10" height="2" rx="1" fill="#fff" opacity="0.9"/>
+  <rect x="8" y="18" width="7" height="2" rx="1" fill="#fff" opacity="0.7"/>
+  <rect x="8" y="22" width="12" height="2" rx="1" fill="#fff" opacity="0.5"/>
+</svg>

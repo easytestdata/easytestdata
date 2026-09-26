@@ -1,0 +1,85 @@
+<!--
+title: Reset a QuickBooks Online Sandbox and Refill It in Minutes
+headline: How to reset a QuickBooks Online sandbox and refill it in minutes
+description: Reset or clear a QuickBooks Online sandbox, reconnect it, and reload a year of realistic books with one easytestdata command. With tips for CI pipelines.
+canonical: /blog/reset-quickbooks-sandbox-and-refill
+og_type: article
+schema: BlogPosting,BreadcrumbList
+date: 2026-09-24
+author: EasyTestData maintainers
+tags: how-to, sandbox, cli
+excerpt: Three ways to get a QuickBooks Online sandbox back to a known state (reset in the portal, delete all transactions, or purge by tag), then one command to refill it with a year of books. Plus how to do the same in CI.
+-->
+
+<main class="py-12 md:py-16">
+  <article class="max-w-3xl mx-auto px-4 sm:px-6">
+    <header class="mb-10">
+      <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500 mb-4">
+        <time datetime="2026-09-24">September 24, 2026</time>
+        <span aria-hidden="true">&middot;</span>
+        <span>EasyTestData maintainers</span>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">How to reset a QuickBooks Online sandbox and refill it in minutes</h1>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">how-to</span>
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">sandbox</span>
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">cli</span>
+      </div>
+    </header>
+    <div class="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-700 prose-pre:bg-slate-900 prose-pre:text-slate-200 prose-pre:overflow-x-auto">
+
+      <p>A QuickBooks Online (QBO) sandbox drifts. After a few weeks of testing it holds half-finished invoices from a bug you fixed, customers a colleague added for a demo, and a chart of accounts nobody remembers changing. Tests that passed on a clean company start failing for reasons that have nothing to do with your code. This is the short, practical version of getting back to a known state and refilling the sandbox with realistic data, in minutes rather than an afternoon. (If you are new to sandboxes, start with the <a href="/blog/quickbooks-online-sandbox-guide">sandbox guide</a>.)</p>
+      <p>You need Node.js 22.13 or newer, a free Intuit developer account with a sandbox company, and an app with Development keys whose redirect URIs include <code>http://localhost:8085/callback</code>.</p>
+
+      <h2>Step 1: pick how clean you need it</h2>
+      <p>There are three ways to clear a sandbox, from gentlest to most drastic. Most days the first one is enough.</p>
+      <h3>A. Purge by tag (keeps everything you made by hand)</h3>
+      <p>If the clutter came from EasyTestData, clear it by tag. Every record it creates carries the <code>EZTD</code> tag, so it can remove its own data and nothing else:</p>
+      <pre><code>npx easytestdata purge --mode generated</code></pre>
+      <p>Purge deletes the transactions it added, makes its customers, vendors, employees and items inactive (accounts stay), and never touches records you made by hand (<a href="/faq#purge">details</a>). If you loaded several datasets with different <code>--tag</code> values, pass <code>--tag</code> to clear one at a time.</p>
+      <h3>B. Delete every transaction (keeps the chart of accounts)</h3>
+      <p>If the leftovers came from other tools or manual entry, delete all transactions in the company and make every customer, vendor, employee and item inactive, keeping the chart of accounts:</p>
+      <pre><code>npx easytestdata purge --mode all</code></pre>
+      <p>The CLI asks for confirmation because this is not limited to tagged records. It still only ever runs against a sandbox: the client refuses any API host other than the sandbox one, and Intuit's Development keys cannot authorize a production company.</p>
+      <h3>C. Reset the sandbox in the developer portal (deletes everything)</h3>
+      <p>For a truly blank company, use Intuit's own reset. Open <a href="https://developer.intuit.com">developer.intuit.com</a>, go to the Dashboard, open the <strong>Sandbox</strong> section and choose <strong>Reset</strong> on the sandbox. It deletes all data in the company, including accounts and lists. As of September 2026, per <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/sandboxes">Intuit's sandbox docs</a>, the sample data is not restored once it has been deleted; create a new sandbox if you want the sample company back. Intuit caps how many sandboxes an account can have, so delete unused ones first if the add button is disabled.</p>
+
+      <h2>Step 2: reconnect if you reset</h2>
+      <p>Options A and B keep your OAuth connection working. After a portal reset (option C), run the authorization again so the CLI holds fresh tokens for the company:</p>
+      <pre><code>npx easytestdata auth</code></pre>
+      <p>Your browser opens, you pick the sandbox, and the connection is saved to <code>.easytestdata.json</code> in the current directory. That file contains a refresh token, so keep it out of version control. If you use the web app (EasyTestData Cloud or <code>npx easytestdata ui</code>) instead of the CLI, disconnect and reconnect the sandbox from the web app.</p>
+
+      <h2>Step 3: refill it with one command</h2>
+      <p>Now load a year of books. Pin the seed and the start date so the same command gives you the same company every time, on any machine:</p>
+      <pre><code>npx easytestdata load --scenario healthy-small --seed 42 --start-date 2025-09-01</code></pre>
+      <p><code>healthy-small</code> is a good default: a small business with steady margins, roughly 750 transactions for 12 months, which loads quickly. The default template is professional services; add <code>--template restaurant</code>, <code>construction</code>, <code>saas</code> or one of the other industries to change what the business sells and spends on. The <a href="/playground">playground</a> shows the exact counts for any combination before you load it, and the <a href="/cli">CLI page</a> lists every flag.</p>
+      <p>Two shortcuts save a step:</p>
+      <ul>
+        <li><code>--dry-run</code> prints the summary without touching QBO, so you can check the counts first.</li>
+        <li><code>--clear-first</code> purges the previous EasyTestData data (same tag) and loads the new set in one go, which turns steps 1A and 3 into a single command:</li>
+      </ul>
+      <pre><code>npx easytestdata load --scenario healthy-small --seed 42 --start-date 2025-09-01 --clear-first</code></pre>
+      <p>Loading takes a few minutes for a scenario this size because the CLI stays under QBO's API rate limit; larger scenarios such as <code>rapid-growth</code> take longer. If you leave out <code>--seed</code>, a random one is drawn and printed with the summary, so a run you liked can always be repeated.</p>
+
+      <h2>Step 4: check and repeat</h2>
+      <p>Log in at <a href="https://app.sandbox.qbo.intuit.com">app.sandbox.qbo.intuit.com</a> and open the customer list or the Profit and Loss report for September 2025 to August 2026. When you want a different company, purge and load again with another scenario:</p>
+      <pre><code>npx easytestdata purge --mode generated
+npx easytestdata load --template construction --scenario cash-crisis --seed 7 --start-date 2025-09-01</code></pre>
+      <p>Different tags let two datasets coexist, for example a stable demo company under one tag and disposable test data under another: load with <code>--tag DEMO</code> once, then keep purging and reloading the <code>EZTD</code> set without touching it.</p>
+
+      <h2>Doing this in CI</h2>
+      <p>The same loop works unattended. A few things make it reliable:</p>
+      <ul>
+        <li><strong>Pass the connection as secrets.</strong> Authorize once on your machine, then give the runner <code>QBO_CLIENT_ID</code>, <code>QBO_CLIENT_SECRET</code>, <code>QBO_REFRESH_TOKEN</code> and <code>QBO_REALM_ID</code> from <code>.easytestdata.json</code>. Treat them like passwords.</li>
+        <li><strong>Pin the CLI version, the seed and the start date</strong> so every run loads the same books: <code>npx --yes easytestdata@0.1.0 load --scenario healthy-small --seed 42 --start-date 2025-09-01 --clear-first</code>.</li>
+        <li><strong>Purge in a step that always runs</strong>, even when tests fail, and pass <code>-y</code>: the CLI refuses to purge without confirmation in a non-interactive shell.</li>
+        <li><strong>Expect the refresh token to rotate.</strong> Intuit issues a new refresh token when the old one is used; the CLI saves it to <code>.easytestdata.json</code>, and the <a href="https://github.com/easytestdata/easytestdata/blob/main/examples/github-actions/seed-qbo-sandbox.yml">GitHub Actions example</a> shows how to write it back to your secret.</li>
+        <li><strong>Use one sandbox per pipeline.</strong> Two jobs loading into the same company at the same time will confuse each other; Intuit lets you have more than one sandbox, so give each pipeline its own.</li>
+      </ul>
+      <p>The <a href="/use-cases/ci-cd-testing">CI/CD page</a> has a complete GitHub Actions workflow.</p>
+
+      <h2>Try the loop without a sandbox</h2>
+      <p>If you want to see the data before you connect anything, <a href="/playground">open the playground</a>. It generates the same books in your browser and prints the exact <code>load</code> command for your sandbox. Questions about what purge removes or why the P&amp;L differs from the target are answered in the <a href="/faq">FAQ</a>.</p>
+    </div>
+  </article>
+</main>

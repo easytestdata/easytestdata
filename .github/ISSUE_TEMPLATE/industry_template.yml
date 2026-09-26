@@ -1,0 +1,38 @@
+name: Industry template proposal
+description: Propose a new industry template.
+labels: ["template", "good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Industry templates are one of the easiest ways to contribute. A template sets service items, expense categories, and financial ratios for an industry. See the template contributing guide in `docs/`.
+  - type: input
+    id: industry
+    attributes:
+      label: Industry
+      placeholder: "Dental practice, e-commerce, agency, ..."
+    validations:
+      required: true
+  - type: textarea
+    id: revenue
+    attributes:
+      label: Typical revenue items
+      description: Products or services the business invoices for, with rough price ranges.
+    validations:
+      required: true
+  - type: textarea
+    id: expenses
+    attributes:
+      label: Typical expense categories
+      description: Vendors and costs, with rough share of revenue if you know it.
+  - type: textarea
+    id: ratios
+    attributes:
+      label: Financial profile
+      description: Gross margin, payment terms, seasonality, anything that makes the books look real for this industry.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd be willing to open a pull request with this template.

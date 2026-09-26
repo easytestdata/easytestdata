@@ -1,0 +1,63 @@
+{
+  "name": "easytestdata",
+  "version": "0.1.0",
+  "description": "Realistic test data for QuickBooks Online sandboxes: generate synthetic accounting data offline or load it into a QBO sandbox.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "type": "module",
+  "bin": {
+    "easytestdata": "./bin/easytestdata.js"
+  },
+  "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/easytestdata/easytestdata.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://easytestdata.com",
+  "bugs": {
+    "url": "https://github.com/easytestdata/easytestdata/issues"
+  },
+  "author": "EasyTestData",
+  "files": [
+    "bin",
+    "src",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "echo \"No build step\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@easytestdata/core": "workspace:*",
+    "@easytestdata/qbo-client": "workspace:*",
+    "@easytestdata/server": "workspace:*",
+    "chalk": "^6.0.0",
+    "commander": "^15.0.0",
+    "inquirer": "^14.2.2",
+    "ora": "^9.4.1"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
+  },
+  "keywords": [
+    "quickbooks",
+    "quickbooks-online",
+    "qbo",
+    "intuit",
+    "sandbox",
+    "cli",
+    "test-data",
+    "synthetic-data",
+    "fake-data",
+    "fixtures",
+    "seed-data",
+    "seeder",
+    "accounting",
+    "financial-data"
+  ]
+}

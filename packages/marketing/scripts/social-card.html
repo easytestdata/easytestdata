@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- Source for og-image.png (1200x630) and .github/social-preview.png (1280x640).
+     Rendered by scripts/render-social.mjs. Invoice rows are real output of
+     `easytestdata generate --template saas --scenario rapid-growth --seed 42`. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; }
+  body {
+    font-family: "Inter", "Liberation Sans", Arial, sans-serif;
+    background: #0c1222;
+    color: #fff;
+    position: relative;
+  }
+  .wrap { position: absolute; inset: 0; padding: 64px 72px; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 14px; font-weight: 800; font-size: 30px; letter-spacing: -0.01em; }
+  .brand svg { width: 40px; height: 40px; }
+  h1 { margin-top: 52px; font-size: 60px; line-height: 1.06; font-weight: 800; letter-spacing: -0.03em; max-width: 560px; }
+  h1 span { background: linear-gradient(90deg, #60a5fa, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  p.sub { margin-top: 24px; font-size: 23px; line-height: 1.4; color: #94a3b8; max-width: 540px; }
+  .foot { margin-top: auto; display: flex; gap: 14px; align-items: center; }
+  .pill { font-size: 20px; font-weight: 600; padding: 10px 18px; border-radius: 999px; }
+  .oss { color: #6ee7b7; background: rgba(16,185,129,0.12); border: 1.5px solid rgba(16,185,129,0.4); }
+  .cmd { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: 19px; color: #34d399; background: rgba(15,23,42,0.9); border: 1.5px solid #334155; }
+  .card {
+    position: absolute; right: 36px; top: 132px; width: 520px;
+    background: #111a2e; border: 1.5px solid #2b3a55; border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 140px rgba(37,99,235,0.28);
+    transform: rotate(-4deg); overflow: hidden;
+  }
+  .card .bar { height: 40px; background: #0b1324; display: flex; align-items: center; gap: 8px; padding: 0 16px; }
+  .card .bar i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+  .card .bar b { margin-left: 10px; font-size: 14px; font-weight: 500; color: #64748b; font-family: "JetBrains Mono", monospace; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-weight: 600; color: #64748b; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; padding: 14px 12px 10px; }
+  td { padding: 11px 10px; border-top: 1px solid #1e2a42; color: #cbd5e1; white-space: nowrap; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; color: #e2e8f0; font-weight: 600; }
+  td.doc { font-family: "JetBrains Mono", monospace; font-size: 13px; color: #93c5fd; }
+  .st { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+  .paid { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .part { background: rgba(234,179,8,0.15); color: #fde047; }
+  .open { background: rgba(148,163,184,0.15); color: #cbd5e1; }
+</style>
+</head>
+<body>
+  
+  <div class="card">
+    <div class="bar"><i style="background:#ef4444aa"></i><i style="background:#eab308aa"></i><i style="background:#22c55eaa"></i><b>invoices.csv</b></div>
+    <table>
+      <thead><tr><th>No.</th><th>Customer</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
+      <tbody>
+{{ROWS}}
+      </tbody>
+    </table>
+  </div>
+  <div class="wrap">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 3a2 2 0 0 0-2 2v22a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V10l-7-7H6z" fill="#2563eb"/><path d="M21 3v5a2 2 0 0 0 2 2h5L21 3z" fill="#93bbfd"/><rect x="8" y="14" width="10" height="2" rx="1" fill="#fff" opacity="0.9"/><rect x="8" y="18" width="7" height="2" rx="1" fill="#fff" opacity="0.7"/><rect x="8" y="22" width="12" height="2" rx="1" fill="#fff" opacity="0.5"/></svg>
+      EasyTestData
+    </div>
+    <h1>Realistic test data for <span>QuickBooks Online</span> sandboxes.</h1>
+    <p class="sub">A year of coherent books: customers, invoices, bills, payments, payroll. Load it, test, purge it.</p>
+    <div class="foot">
+      <span class="pill oss">Open source &middot; Apache-2.0</span>
+      <span class="pill cmd">npx easytestdata</span>
+    </div>
+  </div>
+</body>
+</html>

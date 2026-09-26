@@ -1,0 +1,81 @@
+# Seed a QuickBooks Online sandbox before your integration tests, then clean up.
+# Copy to .github/workflows/ in your own repository.
+#
+# Secrets (from `npx easytestdata auth`, which saves them to .easytestdata.json):
+#   QBO_CLIENT_ID, QBO_CLIENT_SECRET  - your Intuit app's Development keys
+#   QBO_REFRESH_TOKEN, QBO_REALM_ID   - the sandbox company connection
+#   SECRETS_WRITE_TOKEN               - a fine-grained personal access token for this repository
+#                                       with the "Secrets: Read and write" permission
+#
+# Intuit rotates refresh tokens: each refresh can return a new one, and the old one stops working
+# after about a day. The CLI saves the rotated token to .easytestdata.json, and the last step
+# writes it back to the QBO_REFRESH_TOKEN secret. The built-in GITHUB_TOKEN cannot update
+# secrets, hence SECRETS_WRITE_TOKEN. Without it, re-run `npx easytestdata auth` and update
+# QBO_REFRESH_TOKEN by hand whenever the workflow fails with an invalid_grant error (refresh
+# tokens also expire after 100 days).
+name: Integration tests against a QBO sandbox
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qbo-sandbox # one run at a time per sandbox company (they share one refresh token)
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      QBO_CLIENT_ID: ${{ secrets.QBO_CLIENT_ID }}
+      QBO_CLIENT_SECRET: ${{ secrets.QBO_CLIENT_SECRET }}
+      QBO_REFRESH_TOKEN: ${{ secrets.QBO_REFRESH_TOKEN }}
+      QBO_REALM_ID: ${{ secrets.QBO_REALM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The CLI reads the QBO_* variables above and, after refreshing the access token, saves the
+      # (possibly rotated) refresh token to .easytestdata.json. Later steps read it from there.
+      # Pin the CLI version you tested with and the start date, so every run loads the same books.
+      - name: Load a deterministic year of books
+        run: npx --yes easytestdata@0.1.0 load --template saas --scenario rapid-growth --seed 42 --start-date 2025-09-01 --clear-first
+
+      - name: Run your integration tests
+        run: npm test
+
+      # -y skips the confirmation prompt; without it the CLI refuses to purge non-interactively.
+      - name: Remove generated data
+        if: always()
+        run: npx --yes easytestdata@0.1.0 purge --mode generated -y
+
+      - name: Save the rotated refresh token
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.SECRETS_WRITE_TOKEN }}
+        run: |
+          if [ ! -f .easytestdata.json ]; then
+            echo "No .easytestdata.json: the token was not refreshed, nothing to save."
+            exit 0
+          fi
+          token=$(node -p 'JSON.parse(require("fs").readFileSync(".easytestdata.json", "utf8")).connections?.default?.refreshToken ?? ""')
+          [ -n "$token" ] && echo "::add-mask::$token"
+          if [ -z "$token" ] || [ "$token" = "$QBO_REFRESH_TOKEN" ]; then
+            echo "Refresh token unchanged."
+          elif [ -z "$GH_TOKEN" ]; then
+            echo "::warning::Intuit rotated the refresh token, but SECRETS_WRITE_TOKEN is not set. Update QBO_REFRESH_TOKEN by hand (re-run npx easytestdata auth)."
+          else
+            gh secret set QBO_REFRESH_TOKEN --repo "$GITHUB_REPOSITORY" --body "$token"
+            echo "Updated the QBO_REFRESH_TOKEN secret."
+          fi
+          rm -f .easytestdata.json

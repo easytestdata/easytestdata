@@ -1,0 +1,51 @@
+name: Bug report
+description: Something doesn't work as documented.
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please don't include QuickBooks Online credentials, tokens, or realm IDs.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - CLI (easytestdata)
+        - Library (@easytestdata/core, qbo-client)
+        - Local app (npx easytestdata ui)
+        - EasyTestData Cloud
+        - Playground / website
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Commands or clicks. A `--seed` and `--start-date` make generation reproducible.
+      placeholder: |
+        npx easytestdata generate --template saas --scenario rapid-growth --seed 42 --start-date 2025-01-01
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output or logs
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `easytestdata --version`, the npm package version, or the commit you run.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "Node 22.x, macOS 15 / Ubuntu 24.04"

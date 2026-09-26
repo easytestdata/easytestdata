@@ -1,0 +1,17 @@
+{
+  "name": "@easytestdata/examples",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "description": "Runnable EasyTestData examples (checked in CI)",
+  "type": "module",
+  "scripts": {
+    "test": "node library/quickstart.mjs --quiet && node library/custom-scenario.mjs --quiet && vitest run fixtures"
+  },
+  "dependencies": {
+    "@easytestdata/core": "workspace:*"
+  }
+}

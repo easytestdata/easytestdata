@@ -1,0 +1,46 @@
+<!--
+title: QuickBooks Sample Company Data by Industry | EasyTestData
+description: Sample company data for QuickBooks Online sandboxes by industry: 8 templates and 8 scenarios, with the service items, expense categories and ratios of each.
+canonical: /templates
+og_type: website
+-->
+
+<main>
+  <section class="py-16 md:py-20 bg-[#0c1222] text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight">Sample company data by industry</h1>
+      <p class="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">A template decides what the business looks like: what it sells, what it spends on, how it gets paid. A scenario decides how big and how healthy it is. Combine any of the {{TEMPLATE_COUNT}} templates with any of the {{SCENARIO_COUNT}} scenarios.</p>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-slate-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl font-extrabold text-slate-900">{{TEMPLATE_COUNT}} industry templates</h2>
+      <p class="mt-2 text-slate-600">Listed straight from the engine's template definitions.</p>
+      <div class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+{{TEMPLATE_CARDS}}
+      </div>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl font-extrabold text-slate-900">{{SCENARIO_COUNT}} scenarios</h2>
+      <p class="mt-2 text-slate-600">Each scenario sets the size and shape of the company and may adjust collection rates, credits and refunds. On the CLI it's the <code>--scenario</code> flag. Without one you get $500K revenue, a $100K target profit and 15 customers.</p>
+      <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+{{PRESET_CARDS}}
+      </div>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-[#0c1222] text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl font-extrabold text-white">Missing your industry?</h2>
+      <p class="mt-3 text-slate-400">Templates are plain JavaScript objects. Add one, validate it, and open a pull request.</p>
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="{{GITHUB_URL}}/blob/main/docs/contributing-templates.md" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl no-underline">Template contribution guide</a>
+        <a href="/playground" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-white/10 border border-white/20 rounded-xl hover:bg-white/15 no-underline">Try them in the playground</a>
+      </div>
+    </div>
+  </section>
+</main>

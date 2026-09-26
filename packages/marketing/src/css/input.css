@@ -1,0 +1,6 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+summary::-webkit-details-marker {
+  display: none;
+}

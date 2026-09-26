@@ -1,0 +1,55 @@
+{
+  "name": "@easytestdata/qbo-client",
+  "version": "0.1.0",
+  "description": "Realistic test data for QuickBooks Online sandboxes: sandbox-only QBO API client that loads and purges EasyTestData plans.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/easytestdata/easytestdata.git",
+    "directory": "packages/qbo-client"
+  },
+  "homepage": "https://easytestdata.com",
+  "bugs": {
+    "url": "https://github.com/easytestdata/easytestdata/issues"
+  },
+  "author": "EasyTestData",
+  "keywords": [
+    "quickbooks",
+    "quickbooks-online",
+    "qbo",
+    "intuit",
+    "sandbox",
+    "test-data",
+    "synthetic-data",
+    "seed-data",
+    "accounting",
+    "api-client",
+    "batch-operations"
+  ],
+  "files": [
+    "src",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "echo \"No build step\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@easytestdata/core": "workspace:*",
+    "axios": "^1.20.0"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
+  }
+}

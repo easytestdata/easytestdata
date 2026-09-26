@@ -1,0 +1,107 @@
+<!--
+title: QuickBooks Online Sandbox Guide: Create, Reset, Fill With Data
+headline: QuickBooks Online sandbox: create one, log in, reset it, and fill it with realistic data
+description: How to create a QuickBooks Online sandbox in the Intuit developer portal, log in, reset it, and fill it with a year of realistic test data using EasyTestData.
+canonical: /blog/quickbooks-online-sandbox-guide
+og_type: article
+schema: BlogPosting,BreadcrumbList
+date: 2026-09-24
+author: EasyTestData maintainers
+tags: guide, sandbox, intuit developer
+excerpt: Everything about QuickBooks Online sandboxes in one place: what a sandbox is, how to create and log in to one, how to reset it, and how to fill it with a year of realistic books instead of Intuit's sample data.
+-->
+
+<main class="py-12 md:py-16">
+  <article class="max-w-3xl mx-auto px-4 sm:px-6">
+    <header class="mb-10">
+      <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500 mb-4">
+        <time datetime="2026-09-24">September 24, 2026</time>
+        <span aria-hidden="true">&middot;</span>
+        <span>EasyTestData maintainers</span>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">QuickBooks Online sandbox: create one, log in, reset it, and fill it with realistic data</h1>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">guide</span>
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">sandbox</span>
+        <span class="inline-flex px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full">intuit developer</span>
+      </div>
+    </header>
+    <div class="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-700 prose-pre:bg-slate-900 prose-pre:text-slate-200 prose-pre:overflow-x-auto">
+
+      <p>A QuickBooks Online (QBO) sandbox is a throwaway company that Intuit gives every developer account. It behaves like a real QBO company, accepts the same API calls, and never touches anyone's real books. This guide collects the things people ask about sandboxes in one place: how to get one, how to log in to it, how to reset it, and how to fill it with data that looks like a real business.</p>
+      <p>Intuit's own documentation is the source of truth for the portal itself, and it changes from time to time. Where this guide describes portal screens, it reflects <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/sandboxes">Intuit's sandbox docs</a> as of September 2026; check them if a menu has moved.</p>
+
+      <h2>What a sandbox is (and isn't)</h2>
+      <p>A sandbox is a full QBO company with its own chart of accounts, customers, transactions and reports. Intuit seeds a new US sandbox with a small sample company (a handful of customers, invoices and expenses) so that there is something to click on. It differs from a production company in a few ways that matter for testing:</p>
+      <ul>
+        <li>It is tied to your developer account, not to a paying QBO subscription, and it is free.</li>
+        <li>Your app talks to it through the sandbox API host, <code>sandbox-quickbooks.api.intuit.com</code>, using your app's <strong>Development</strong> keys. Production keys and production companies are a separate world.</li>
+        <li>Intuit caps how many sandboxes a developer account can have (see their docs for the current number), and each sandbox belongs to one country, which decides its currency, tax setup and available features.</li>
+        <li>Rate limits apply in the sandbox just as they do in production, so a tool that loads thousands of records has to pace itself.</li>
+      </ul>
+      <p>The sample data is fine for a first API call. It is not enough to test pagination, aging reports, partial payments, payroll expenses or anything that depends on volume. That is the gap the last section of this guide fills.</p>
+
+      <h2>Create a sandbox</h2>
+      <p>You need a free Intuit developer account. Sign up at <a href="https://developer.intuit.com">developer.intuit.com</a>; a US sandbox company is usually created for you as part of that. To see it, or to add another:</p>
+      <ol>
+        <li>Sign in to the developer portal and open your <strong>Dashboard</strong>.</li>
+        <li>Open the <strong>Sandbox</strong> section (it is listed with your apps and account settings).</li>
+        <li>Choose <strong>Add a sandbox company</strong> and pick a country. The sandbox appears in the list with its company name and a realm ID, the number that identifies the company in every API call.</li>
+      </ol>
+      <p>If the button is disabled, you have reached the cap for your account; delete a sandbox you no longer need and try again.</p>
+
+      <h2>Log in to a sandbox</h2>
+      <p>Sandbox companies have their own sign-in address: <a href="https://app.sandbox.qbo.intuit.com">app.sandbox.qbo.intuit.com</a>. Use the same Intuit account you use for the developer portal. The regular <code>qbo.intuit.com</code> address only shows production companies, which is why a freshly created sandbox seems to be missing when people look for it there.</p>
+      <p>Once you are in, it is ordinary QuickBooks: customers, invoices, reports, the chart of accounts. Anything your app creates through the API shows up here immediately, which makes the sandbox UI the quickest way to check what a test run actually did.</p>
+
+      <h2>Connect an app to it</h2>
+      <p>API access goes through an app in your developer account. Create one from the dashboard with the <strong>Accounting</strong> scope (<code>com.intuit.quickbooks.accounting</code>). Every app has two sets of keys:</p>
+      <ul>
+        <li><strong>Development</strong> keys authorize sandbox companies only. This is what you want for testing.</li>
+        <li><strong>Production</strong> keys authorize real companies, and Intuit only issues them after an app review.</li>
+      </ul>
+      <p>Under <strong>Keys &amp; credentials</strong>, the Development tab lists the client ID and client secret and the redirect URIs Intuit will send users back to after OAuth. Whatever tool you connect has to appear in that list. For the EasyTestData CLI, add:</p>
+      <pre><code>http://localhost:8085/callback</code></pre>
+      <p>Then run the OAuth flow once. The CLI opens your browser, you pick the sandbox company, and the tokens are stored locally in <code>.easytestdata.json</code> (keep that file out of version control):</p>
+      <pre><code>export QBO_CLIENT_ID=...
+export QBO_CLIENT_SECRET=...
+npx easytestdata auth</code></pre>
+      <p>Development keys cannot authorize a production company, so there is no way to point this at real books by accident. EasyTestData adds a second guard on top: its QBO client refuses any API host other than the sandbox one, and the tests use the production address only to prove that the check rejects it.</p>
+
+      <h2>Reset a sandbox</h2>
+      <p>Sooner or later a sandbox fills up with leftovers from old test runs. You have two options, and they are not the same thing.</p>
+      <h3>Reset it in the developer portal</h3>
+      <p>In the Sandbox section of the dashboard, each sandbox has a <strong>Reset</strong> action that deletes all data in the company. It is the nuclear option: transactions, customers, vendors, items, accounts you added, everything. Two things to know before you click it, as of September 2026 per <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/sandboxes">Intuit's docs</a>:</p>
+      <ul>
+        <li>The reset wipes the company, and Intuit's sample data is not restored once it has been deleted. If you want the sample company back, create a new sandbox instead.</li>
+        <li>Your app's OAuth connection to the sandbox may need to be made again afterwards. Plan to re-run the authorization step.</li>
+      </ul>
+      <h3>Clear only what a tool created</h3>
+      <p>If you only want to remove the data a test run added, and keep anything you set up by hand, clear by tag instead. Everything EasyTestData creates carries a tag (<code>EZTD</code> by default) in a document number, memo or note field, so it can find its own records later:</p>
+      <pre><code>npx easytestdata purge --mode generated</code></pre>
+      <p>Purge deletes the transactions it added, makes its customers, vendors, employees and items inactive (accounts stay), and never touches records you made by hand (<a href="/faq#purge">details</a>). There is also <code>--mode all</code>, which deletes every transaction in the sandbox company and makes all customers, vendors, employees and items inactive, without the portal reset; use it when you want an empty ledger but want to keep your chart of accounts. The <a href="/blog/reset-quickbooks-sandbox-and-refill">reset and refill guide</a> walks through both paths step by step.</p>
+
+      <h2>Fill it with realistic data</h2>
+      <p>An empty or sample-data sandbox tells you very little about how your integration behaves with a real customer's books. EasyTestData generates a year of financially coherent activity for a chosen industry, so invoices tie to payments, bills to bill payments, and revenue and expenses add up to targets you set. You can do this from the terminal or from a web app.</p>
+      <h3>With the CLI</h3>
+      <p>Pick an industry template and a scenario, and pin the seed and start date so the same command produces the same books every time:</p>
+      <pre><code>npx easytestdata load --template saas --scenario rapid-growth --seed 42 --start-date 2025-09-01 --dry-run
+npx easytestdata load --template saas --scenario rapid-growth --seed 42 --start-date 2025-09-01</code></pre>
+      <p>The dry run prints what would be created: for this command, 90 customers, 1,080 invoices, 952 payments, 24 payroll runs and 2,854 transactions in total, from September 2025 to August 2026. The real run creates the accounts and lists first, then each transaction type in dependency order, pacing itself under QBO's rate limit. Smaller scenarios such as <code>quick-demo</code> (three months) or <code>healthy-small</code> load much faster; the <a href="/playground">playground</a> shows the counts for any combination before you commit to one.</p>
+      <p>If you leave out <code>--seed</code>, the CLI draws a random one and prints it with the summary, so you can always reproduce a run you liked. The <a href="/cli">CLI page</a> lists every flag.</p>
+      <h3>With EasyTestData Cloud or the app on your computer</h3>
+      <p>The same engine runs behind a web app. On <a href="{{APP_URL}}/login">EasyTestData Cloud</a> you sign in, connect your sandbox with a Connect button (Cloud provides the Intuit app, so there are no keys to copy), pick a template and scenario, and watch the load progress live. It is free, with limits that only exist to prevent abuse of the shared service. If you would rather keep everything on your own computer, <a href="/run-locally"><code>npx easytestdata ui</code></a> gives you the same web app with no limits and no account.</p>
+
+      <h2>Check the result</h2>
+      <p>Log in at app.sandbox.qbo.intuit.com and open the customer list, the A/R aging summary and the Profit and Loss report for the generated period. You should see a spread of paid, partially paid and open invoices, payroll expenses twice a month, and a company that looks like the industry you picked. Run your integration against it, then purge by tag and try another scenario.</p>
+
+      <h2>Common questions</h2>
+      <p><strong>Can I have more than one sandbox?</strong> Yes, up to Intuit's cap per developer account. A second sandbox is handy for testing another country or keeping a clean one for demos.</p>
+      <p><strong>Can EasyTestData touch a production company?</strong> No. Development keys only authorize sandboxes, and the client refuses any host but the sandbox API. The <a href="/faq">FAQ</a> has the details.</p>
+      <p><strong>Does the generated profit match the P&amp;L report?</strong> Almost; the report lands a little below the target, and the <a href="/faq#profit">FAQ explains why</a>.</p>
+
+      <h2>Start with the playground</h2>
+      <p>You do not need a sandbox or an account to see what EasyTestData generates. <a href="/playground">Open the playground</a>, pick a template and scenario, and it builds the year of books in your browser and prints the matching CLI command to load it into your sandbox.</p>
+    </div>
+  </article>
+</main>

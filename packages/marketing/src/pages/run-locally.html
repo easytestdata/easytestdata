@@ -1,0 +1,105 @@
+<!--
+title: Run EasyTestData Locally | One Command, No Account
+description: Run the EasyTestData web app on your own computer with npx easytestdata ui. No account, no sign-in, no limits. Free forever under Apache-2.0.
+canonical: /run-locally
+og_type: website
+-->
+
+<main>
+  <section class="py-16 md:py-20 bg-[#0c1222]">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-sm font-semibold text-emerald-300 mb-6">Apache-2.0 &middot; Free forever</div>
+      <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight">Run it locally</h1>
+      <p class="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">The full web app on your own computer with one command. No account, no sign-in, no limits.</p>
+      <div class="mt-10 bg-slate-900 border border-slate-700 rounded-xl p-4 sm:p-6 text-left">
+        <div class="flex items-center gap-2 mb-3" aria-hidden="true">
+          <span class="w-3 h-3 rounded-full bg-red-500/70"></span>
+          <span class="w-3 h-3 rounded-full bg-yellow-500/70"></span>
+          <span class="w-3 h-3 rounded-full bg-green-500/70"></span>
+          <span class="text-xs text-slate-500 ml-2">terminal</span>
+        </div>
+        <pre class="text-sm text-emerald-400 font-mono leading-relaxed overflow-x-auto"><code><span class="text-slate-500 select-none">$ </span>npx easytestdata ui
+
+<span class="text-slate-400"># opens http://localhost:28080 in your browser;
+# your data stays in ~/.easytestdata on this computer</span></code></pre>
+      </div>
+      <p class="mt-4 text-sm text-slate-400">Options, where your data lives and how to reset it are in the <a href="{{GITHUB_URL}}/blob/main/docs/run-locally.md" class="text-cyan-300 underline underline-offset-2">run-it-locally guide</a>.</p>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl font-extrabold text-slate-900 text-center">Local vs EasyTestData Cloud</h2>
+      <div class="mt-10 overflow-x-auto border border-slate-200 rounded-xl">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50">
+            <tr>
+              <th scope="col" class="text-left py-3 px-4 font-semibold text-slate-900"></th>
+              <th scope="col" class="text-center py-3 px-4 font-semibold text-emerald-700">Local</th>
+              <th scope="col" class="text-center py-3 px-4 font-semibold text-blue-700">Cloud</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-700">
+            <tr><th scope="row" class="text-left py-3 px-4 font-medium">Price</th><td class="py-3 px-4 text-center">Free forever</td><td class="py-3 px-4 text-center">Free</td></tr>
+            <tr><th scope="row" class="text-left py-3 px-4 font-medium">QBO connections</th><td class="py-3 px-4 text-center">Unlimited</td><td class="py-3 px-4 text-center">3</td></tr>
+            <tr><th scope="row" class="text-left py-3 px-4 font-medium">Loads into QuickBooks per month</th><td class="py-3 px-4 text-center">Unlimited</td><td class="py-3 px-4 text-center">10</td></tr>
+            <tr><th scope="row" class="text-left py-3 px-4 font-medium">Records per job</th><td class="py-3 px-4 text-center">Unlimited</td><td class="py-3 px-4 text-center">5,000</td></tr>
+            <tr><th scope="row" class="text-left py-3 px-4 font-medium">Sign-in</th><td class="py-3 px-4 text-center">None (just you)</td><td class="py-3 px-4 text-center">Google, GitHub or Intuit</td></tr>
+            <tr><th scope="row" class="text-left py-3 px-4 font-medium">Team members</th><td class="py-3 px-4 text-center">Just you</td><td class="py-3 px-4 text-center">5</td></tr>
+            <tr><th scope="row" class="text-left py-3 px-4 font-medium">Templates and scenarios</th><td class="py-3 px-4 text-center">All</td><td class="py-3 px-4 text-center">All</td></tr>
+            <tr><th scope="row" class="text-left py-3 px-4 font-medium">Intuit developer app</th><td class="py-3 px-4 text-center">Your own</td><td class="py-3 px-4 text-center">Provided</td></tr>
+            <tr><th scope="row" class="text-left py-3 px-4 font-medium">Where it runs</th><td class="py-3 px-4 text-center">Your computer</td><td class="py-3 px-4 text-center">Our server</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 text-sm text-slate-600 text-center max-w-2xl mx-auto">{{CLOUD_LIMITS}}</p>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-slate-50">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl font-extrabold text-slate-900 text-center">What you need</h2>
+      <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div class="bg-white border border-slate-200 rounded-xl p-6">
+          <h3 class="font-bold text-slate-900">Node.js 22.13+</h3>
+          <p class="mt-1 text-sm text-slate-600">Node.js 22.13 or later. The database is built in, so there is nothing else to install: no Docker, no database server.</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-6">
+          <h3 class="font-bold text-slate-900">An Intuit developer app</h3>
+          <p class="mt-1 text-sm text-slate-600">Free from <a href="https://developer.intuit.com" class="text-blue-700 underline">developer.intuit.com</a>, needed only to connect a sandbox. Add <code>http://localhost:28080/api/v1/connections/callback</code> to its Development redirect URIs (with <code>--port</code>, register the address the setup screen shows instead; the CLI's <code>easytestdata auth</code> uses <code>http://localhost:8085/callback</code>). The first time you connect, a setup screen asks for its development keys.</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-6">
+          <h3 class="font-bold text-slate-900">Nothing else</h3>
+          <p class="mt-1 text-sm text-slate-600">No account and no configuration. The encryption key for your QBO tokens is created on first run. Generating and downloading data works without any keys.</p>
+        </div>
+      </div>
+      <p class="mt-8 text-center text-sm text-slate-600">Prefer the terminal or a CI pipeline? The <a href="/cli" class="text-blue-700 underline">CLI</a> generates, loads and purges without the web app.</p>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl font-extrabold text-slate-900 text-center">Sandbox only, on your computer too</h2>
+      <p class="mt-3 text-center text-slate-600 max-w-2xl mx-auto">The same guarantees apply whether we run it or you do.</p>
+      <ul class="mt-8 space-y-3 text-sm text-slate-700">
+        <li class="flex gap-3"><span class="text-emerald-600 font-bold">&#10003;</span><span><code>assertSandboxBaseUrl</code> in <a href="https://github.com/easytestdata/easytestdata/blob/main/packages/qbo-client/src/qbo-client.js" class="text-blue-700 underline">qbo-client.js</a> refuses any API host other than <code>sandbox-quickbooks.api.intuit.com</code>. The production QuickBooks address doesn't appear anywhere in the source code; the tests use it only to prove the check rejects it.</span></li>
+        <li class="flex gap-3"><span class="text-emerald-600 font-bold">&#10003;</span><span>Your Intuit app's development keys can only authorize sandbox companies.</span></li>
+        <li class="flex gap-3"><span class="text-emerald-600 font-bold">&#10003;</span><span>The only OAuth scope requested is <code>com.intuit.quickbooks.accounting</code>.</span></li>
+        <li class="flex gap-3"><span class="text-emerald-600 font-bold">&#10003;</span><span>Per connection, the local database stores the realm ID, the company name and the OAuth tokens encrypted with AES-256-GCM, with a key created on first run and kept in <code>~/.easytestdata</code>. Disconnecting deletes them.</span></li>
+        <li class="flex gap-3"><span class="text-emerald-600 font-bold">&#10003;</span><span>The app listens only on <code>127.0.0.1</code> and refuses changes requested by other websites open in the same browser. Nothing on your network can reach it.</span></li>
+        <li class="flex gap-3"><span class="text-emerald-600 font-bold">&#10003;</span><span>Generated data is tagged <code>EZTD</code> and cleared by tag. Purge deletes the transactions it added, makes its customers, vendors, employees and items inactive (accounts stay), and never touches records you made by hand (<a href="/faq#purge" class="text-blue-700 underline">details</a>).</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="bg-[#0c1222] py-16 md:py-20 text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Ready to run it?</h2>
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="{{GITHUB_URL}}/blob/main/docs/run-locally.md" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl no-underline">Read the run-it-locally guide</a>
+        <a href="{{GITHUB_URL}}" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-white/10 border border-white/20 rounded-xl hover:bg-white/15 no-underline">Star on GitHub</a>
+      </div>
+      <p class="mt-5 text-sm text-slate-400">or <a href="{{APP_URL}}/login" class="text-cyan-300 underline underline-offset-2">use EasyTestData Cloud for free</a></p>
+    </div>
+  </section>
+</main>

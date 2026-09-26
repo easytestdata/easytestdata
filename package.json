@@ -1,0 +1,63 @@
+{
+  "name": "easytestdata",
+  "private": true,
+  "description": "Realistic test data for QuickBooks Online sandboxes",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "preinstall": "node ./scripts/guard-node-version.mjs",
+    "db:migrate": "pnpm --filter @easytestdata/server run migrate",
+    "dev": "turbo run dev --filter=@easytestdata/server --filter=@easytestdata/web",
+    "start": "pnpm --filter @easytestdata/server run start",
+    "migrations:check": "node ./scripts/check-migration-sequence.mjs",
+    "engines:check": "node ./scripts/check-node-engines.mjs",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:packed": "node scripts/verify-packed-cli.mjs",
+    "check": "pnpm run lint && pnpm run format:check && pnpm run build && pnpm run test:packed && pnpm run test && pnpm audit --prod --audit-level=high",
+    "test:qbo-live": "node scripts/test-live-qbo.mjs",
+    "lint": "pnpm run migrations:check && pnpm run engines:check && git ls-files \"packages/**/*.js\" | xargs pnpm exec eslint",
+    "format": "prettier --write \"packages/**/*.js\" \"*.{json,yaml,yml,md}\"",
+    "format:check": "prettier --check \"packages/**/*.js\" \"*.{json,yaml,yml,md}\"",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "changeset": "changeset"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^3",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "prettier": "^3.9.8",
+    "semver": "^7",
+    "turbo": "^2.11.3",
+    "vitest": "^5.0.1",
+    "yaml": "^2"
+  },
+  "pnpm": {
+    "overrides": {
+      "@babel/core@<=7.29.0": "7.29.6",
+      "@protobufjs/utf8@<=1.1.0": "1.1.1",
+      "@tootallnate/once@<2.0.1": "2.0.1",
+      "@parcel/watcher>picomatch": "4.0.4",
+      "brace-expansion@<1.1.13": "1.1.13",
+      "brace-expansion@>=2.0.0 <2.1.4": "2.1.4",
+      "brace-expansion@>=4.0.0 <5.0.5": "5.0.6",
+      "brace-expansion@>=5.0.0 <5.0.6": "5.0.6",
+      "dompurify@<=3.4.10": "3.4.11",
+      "flatted@<=3.4.1": "3.4.2",
+      "form-data@>=4.0.0 <4.0.6": "4.0.6",
+      "js-yaml@>=4.0.0 <=4.1.1": "4.2.0",
+      "jsdom@>=30.0.0": "^29.1.1",
+      "lodash@<=4.17.23": "4.18.0",
+      "minimatch@<3.1.4": "3.1.4",
+      "path-to-regexp@<0.1.13": "0.1.13",
+      "path-to-regexp@>=8.0.0 <8.4.0": "8.4.0",
+      "picomatch@<2.3.2": "2.3.2",
+      "protobufjs@<=7.6.2": "7.6.3",
+      "qs@>=6.11.1 <=6.15.1": "6.15.2",
+      "uuid@<11.1.1": "11.1.1"
+    }
+  }
+}

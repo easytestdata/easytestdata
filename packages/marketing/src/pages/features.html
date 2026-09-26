@@ -1,0 +1,115 @@
+<!--
+title: Features | EasyTestData for QuickBooks Online
+description: 8 industry templates, 8 scenarios, 15 transaction types, deterministic seeds, tag-based purge, JSON/CSV export, a CLI and web app. All open source, Apache-2.0.
+canonical: /features
+og_type: website
+schema: SoftwareApplication
+-->
+
+<main>
+  <section class="py-16 md:py-20 bg-[#0c1222] text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight">What EasyTestData generates</h1>
+      <p class="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">A year of test data for a QuickBooks Online (QBO) sandbox, where the numbers actually add up. Everything below is in the open-source engine.</p>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl font-extrabold text-slate-900 text-center">15 transaction types</h2>
+      <p class="mt-3 text-center text-slate-600 max-w-2xl mx-auto">Plus the master data they depend on: accounts, customers, vendors, employees, service items and expense categories.</p>
+      <ul class="mt-10 flex flex-wrap justify-center gap-2 max-w-4xl mx-auto">
+        <li class="px-3 py-1.5 bg-blue-50 text-blue-800 rounded-full text-sm font-medium">Invoices</li>
+        <li class="px-3 py-1.5 bg-blue-50 text-blue-800 rounded-full text-sm font-medium">Sales receipts</li>
+        <li class="px-3 py-1.5 bg-blue-50 text-blue-800 rounded-full text-sm font-medium">Payments (incl. partial)</li>
+        <li class="px-3 py-1.5 bg-blue-50 text-blue-800 rounded-full text-sm font-medium">Deposits</li>
+        <li class="px-3 py-1.5 bg-blue-50 text-blue-800 rounded-full text-sm font-medium">Estimates</li>
+        <li class="px-3 py-1.5 bg-blue-50 text-blue-800 rounded-full text-sm font-medium">Credit memos</li>
+        <li class="px-3 py-1.5 bg-blue-50 text-blue-800 rounded-full text-sm font-medium">Refund receipts</li>
+        <li class="px-3 py-1.5 bg-orange-50 text-orange-800 rounded-full text-sm font-medium">Bills</li>
+        <li class="px-3 py-1.5 bg-orange-50 text-orange-800 rounded-full text-sm font-medium">Bill payments</li>
+        <li class="px-3 py-1.5 bg-orange-50 text-orange-800 rounded-full text-sm font-medium">Purchase orders</li>
+        <li class="px-3 py-1.5 bg-orange-50 text-orange-800 rounded-full text-sm font-medium">Vendor credits</li>
+        <li class="px-3 py-1.5 bg-orange-50 text-orange-800 rounded-full text-sm font-medium">Expenses</li>
+        <li class="px-3 py-1.5 bg-slate-100 text-slate-800 rounded-full text-sm font-medium">Payroll expenses</li>
+        <li class="px-3 py-1.5 bg-slate-100 text-slate-800 rounded-full text-sm font-medium">Journal entries</li>
+        <li class="px-3 py-1.5 bg-slate-100 text-slate-800 rounded-full text-sm font-medium">Transfers</li>
+      </ul>
+      <p class="mt-6 text-center text-sm text-slate-500">A 12-month run creates roughly {{TXN_MIN}}&ndash;{{TXN_MAX}} transactions depending on the scenario.</p>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-slate-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl font-extrabold text-slate-900 text-center">How it works under the hood</h2>
+      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900">Financially coherent</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">Revenue and expense targets are allocated to the cent across invoices, sales receipts, bills, expenses and payroll to hit the target profit you asked for.</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900">Realistic receivables</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">Customer concentration, payment delays, partial payments and unpaid invoices follow the template and scenario, so aging reports have something to show.</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900">Deterministic seeds</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">A seeded PRNG drives every choice. Same inputs and seed, same output, byte for byte.</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900">Tag-based purge</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">Every generated record is tagged (default <code>EZTD</code>). Purge deletes the transactions it added, makes its customers, vendors, employees and items inactive (accounts stay), and never touches records you made by hand (<a href="/faq#purge" class="text-blue-700 underline">details</a>).</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900">Rate-limit aware loading</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">Batched creates, retries and a request budget below QBO's API limits, with progress reporting. The web app can also roll back a failed load.</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900">JSON and CSV export</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">Skip QBO entirely and write the plan to files for unit-test fixtures, mock servers or database seeds.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl font-extrabold text-slate-900 text-center">Four ways to run it</h2>
+      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <a href="/playground" class="block bg-slate-50 border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-shadow no-underline">
+          <h3 class="font-bold text-slate-900">Playground</h3>
+          <p class="mt-2 text-sm text-slate-600">In your browser. Preview and download, no account.</p>
+        </a>
+        <a href="/cli" class="block bg-slate-50 border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-shadow no-underline">
+          <h3 class="font-bold text-slate-900">CLI</h3>
+          <p class="mt-2 text-sm text-slate-600"><code>npx easytestdata</code>: generate files, or load and purge a sandbox.</p>
+        </a>
+        <a href="/run-locally" class="block bg-slate-50 border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-shadow no-underline">
+          <h3 class="font-bold text-slate-900">On your computer</h3>
+          <p class="mt-2 text-sm text-slate-600"><code>npx easytestdata ui</code>: the web app, no account, no limits.</p>
+        </a>
+        <a href="{{APP_URL}}/login" class="block bg-slate-50 border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-shadow no-underline">
+          <h3 class="font-bold text-slate-900">EasyTestData Cloud</h3>
+          <p class="mt-2 text-sm text-slate-600">Hosted for you, with teams. Free.</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-slate-50">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <h2 class="text-3xl font-extrabold text-slate-900">Countries</h2>
+      <p class="mt-3 text-slate-600">US-first. UK, AU and CA locales are newer and less tested: they change employee names, addresses, currency and payment terms. Loading into non-US QBO sandboxes hasn't been verified yet, so please <a href="{{GITHUB_URL}}/issues" class="text-blue-700 underline">report what you find</a>.</p>
+    </div>
+  </section>
+
+  <section class="bg-[#0c1222] py-16 md:py-20 text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Extend it</h2>
+      <p class="mt-3 text-slate-400 max-w-2xl mx-auto">Add industry templates and scenarios: they are plain data and the best first contributions.</p>
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="{{GITHUB_URL}}" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-white/10 border border-white/20 rounded-xl hover:bg-white/15 no-underline">Star on GitHub</a>
+        <a href="/playground" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl no-underline">Try it in your browser</a>
+      </div>
+    </div>
+  </section>
+</main>

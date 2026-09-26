@@ -1,0 +1,23 @@
+{
+  "name": "@easytestdata/marketing",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "@tailwindcss/typography": "^0.5.20",
+    "esbuild": "0.28.2",
+    "tailwindcss": "^4.3.3",
+    "vitest": "^5.0.1"
+  }
+}

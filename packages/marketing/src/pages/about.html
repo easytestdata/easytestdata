@@ -1,0 +1,59 @@
+<!--
+title: About | EasyTestData for QuickBooks Online
+description: EasyTestData is an open-source project that generates realistic test data for QuickBooks Online sandboxes. Run it locally or use EasyTestData Cloud.
+canonical: /about
+og_type: website
+schema: Organization
+-->
+
+<main>
+  <section class="py-16 md:py-20 bg-[#0c1222] text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
+        About EasyTestData
+      </h1>
+      <p class="mt-4 text-lg text-slate-400">
+        Realistic test data for QuickBooks Online sandboxes.
+      </p>
+    </div>
+  </section>
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 prose prose-slate">
+      <h2>Why it exists</h2>
+      <p>
+        Every developer building on QuickBooks Online (QBO) hits the same wall: a sandbox with a
+        handful of records, while real companies have years of invoices, partial payments, credits
+        and payroll. EasyTestData closes that gap by generating a year of financially coherent books
+        for a chosen industry and scenario, loading it into a QBO sandbox, and purging it cleanly
+        afterwards.
+      </p>
+      <h2>Open source first</h2>
+      <p>
+        The whole project (generation engine, QBO client, CLI, API server and web app) is open
+        source under the Apache-2.0 license. You can generate data from the
+        <a href="/cli">CLI</a> or the <a href="/playground">playground</a>,
+        <a href="/run-locally">run the web app on your own computer</a> with no limits, or use
+        EasyTestData Cloud, a free hosted instance.
+      </p>
+      <p>
+        Contributions are welcome: industry templates and scenarios are the best first
+        contributions, and bug reports and fixes are always useful. Start with the
+        <a href="{{GITHUB_URL}}">GitHub repository</a> and the
+        <a href="{{GITHUB_URL}}/blob/main/CONTRIBUTING.md">contributing guide</a>.
+      </p>
+      <h2>Not affiliated with Intuit</h2>
+      <p>
+        EasyTestData is an independent project. QuickBooks is a registered trademark of Intuit Inc.,
+        which does not endorse or sponsor EasyTestData.
+      </p>
+      <h2>Contact</h2>
+      <p>
+        Questions and ideas go to <a href="{{GITHUB_URL}}/discussions">GitHub Discussions</a>; bugs
+        and feature requests to <a href="{{GITHUB_URL}}/issues/new/choose">GitHub issues</a>. For
+        EasyTestData Cloud account questions, email
+        <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a>. The
+        <a href="/contact">contact page</a> lists all of these.
+      </p>
+    </div>
+  </section>
+</main>

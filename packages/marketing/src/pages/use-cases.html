@@ -1,0 +1,55 @@
+<!--
+title: Use Cases | EasyTestData for QuickBooks Online
+description: How QBO app developers, QA teams, CI pipelines, consultants and trainers use EasyTestData to fill QuickBooks Online sandboxes with test data.
+canonical: /use-cases
+og_type: website
+-->
+
+<main>
+  <section class="py-16 md:py-20 bg-[#0c1222] text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight">Test data for everyone who works in QBO sandboxes</h1>
+      <p class="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">A QuickBooks Online (QBO) sandbox starts almost empty. Here's how people fill it.</p>
+    </div>
+  </section>
+
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <article class="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8">
+        <h2 class="text-xl font-bold text-slate-900">QBO app developers</h2>
+        <p class="mt-3 text-sm text-slate-600 leading-relaxed"><strong class="text-slate-800">Problem:</strong> your integration works on three hand-entered invoices and breaks on a real customer's partial payments, credits and volume.</p>
+        <p class="mt-2 text-sm text-slate-600 leading-relaxed"><strong class="text-slate-800">With EasyTestData:</strong> load hundreds of invoices with realistic collection patterns, credit memos, vendor credits and refunds, then purge and try another scenario.</p>
+        <a href="/use-cases/qbo-app-developers" class="mt-4 inline-block text-sm font-semibold text-blue-700 no-underline hover:text-blue-800">For app developers</a>
+      </article>
+      <article class="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8">
+        <h2 class="text-xl font-bold text-slate-900">CI/CD pipelines</h2>
+        <p class="mt-3 text-sm text-slate-600 leading-relaxed"><strong class="text-slate-800">Problem:</strong> integration tests need a known sandbox state, and setting it up by hand is slow and drifts.</p>
+        <p class="mt-2 text-sm text-slate-600 leading-relaxed"><strong class="text-slate-800">With EasyTestData:</strong> generate seeded fixtures with no QBO at all, or run load, test and purge against a sandbox from the CLI.</p>
+        <a href="/use-cases/ci-cd-testing" class="mt-4 inline-block text-sm font-semibold text-blue-700 no-underline hover:text-blue-800">For CI/CD</a>
+      </article>
+      <article class="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8">
+        <h2 class="text-xl font-bold text-slate-900">Consultants and accounting firms</h2>
+        <p class="mt-3 text-sm text-slate-600 leading-relaxed"><strong class="text-slate-800">Problem:</strong> a demo company for a client meeting takes hours to key in and never looks like their business.</p>
+        <p class="mt-2 text-sm text-slate-600 leading-relaxed"><strong class="text-slate-800">With EasyTestData:</strong> pick the client's industry template, load a year of activity, walk through reports, purge afterwards.</p>
+        <a href="/use-cases/accounting-firms" class="mt-4 inline-block text-sm font-semibold text-blue-700 no-underline hover:text-blue-800">For accounting firms</a>
+      </article>
+      <article class="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8">
+        <h2 class="text-xl font-bold text-slate-900">QA teams, educators and trainers</h2>
+        <p class="mt-3 text-sm text-slate-600 leading-relaxed"><strong class="text-slate-800">Problem:</strong> report and aging tests (or a class of students) need the same realistic numbers every time.</p>
+        <p class="mt-2 text-sm text-slate-600 leading-relaxed"><strong class="text-slate-800">With EasyTestData:</strong> share a template, scenario, date range and seed, and everyone gets identical books. Export JSON or CSV for offline work.</p>
+        <a href="/playground" class="mt-4 inline-block text-sm font-semibold text-blue-700 no-underline hover:text-blue-800">Try a seed in the playground</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="bg-[#0c1222] py-16 md:py-20 text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Stop hand-entering test data.</h2>
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="/playground" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl no-underline">Try it in your browser</a>
+        <a href="{{GITHUB_URL}}" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-white/10 border border-white/20 rounded-xl hover:bg-white/15 no-underline">Star on GitHub</a>
+      </div>
+      <p class="mt-5 text-sm text-slate-400">or <a href="{{APP_URL}}/login" class="text-cyan-300 underline underline-offset-2">use EasyTestData Cloud for free</a></p>
+    </div>
+  </section>
+</main>

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "@easytestdata/server#build": {
+      "dependsOn": ["^build", "@easytestdata/web#build"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["build"]
+    },
+    "easytestdata#test": {
+      "dependsOn": ["build", "@easytestdata/web#build"]
+    },
+    "lint": {},
+    "clean": {
+      "cache": false
+    },
+    "@easytestdata/marketing#build": {
+      "inputs": ["src/**", "build.js", "package.json"],
+      "env": ["APP_URL"],
+      "outputs": ["dist/**"]
+    },
+    "dev": {
+      "persistent": true,
+      "cache": false
+    }
+  }
+}

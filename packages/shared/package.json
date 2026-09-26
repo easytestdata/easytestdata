@@ -1,0 +1,75 @@
+{
+  "name": "@easytestdata/shared",
+  "version": "0.1.0",
+  "description": "Shared Zod schemas, types, and constants for EasyTestData",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/easytestdata/easytestdata.git",
+    "directory": "packages/shared"
+  },
+  "homepage": "https://easytestdata.com",
+  "bugs": {
+    "url": "https://github.com/easytestdata/easytestdata/issues"
+  },
+  "author": "EasyTestData",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": "./src/index.js",
+    "./schemas": "./src/schemas/index.js",
+    "./constants": "./src/constants.js",
+    "./query-keys": "./src/query-keys.js",
+    "./types": "./src/types.ts",
+    "./api-client": "./src/api-client.ts",
+    "./api-hooks": "./src/api-hooks.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./src/index.d.ts",
+        "default": "./src/index.js"
+      },
+      "./schemas": {
+        "types": "./src/schemas/index.d.ts",
+        "default": "./src/schemas/index.js"
+      },
+      "./constants": {
+        "types": "./src/constants.d.ts",
+        "default": "./src/constants.js"
+      },
+      "./query-keys": {
+        "types": "./src/query-keys.d.ts",
+        "default": "./src/query-keys.js"
+      }
+    }
+  },
+  "files": [
+    "src/**/*.js",
+    "src/**/*.d.ts",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "test": "tsc -p tests"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.103.2"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-query": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.103.2",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,240 @@
+<!--
+title: Fill a QuickBooks Online Sandbox with Realistic Test Data | Free
+description: Fill a QuickBooks Online sandbox with a year of realistic, financially coherent test data and clear it with one command. Free, open source, sandbox-only.
+canonical: /
+og_type: website
+schema: WebSite,SoftwareApplication
+-->
+
+<main>
+  <section class="relative bg-[#0c1222] overflow-hidden">
+    <div class="absolute top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] pointer-events-none" style="background: radial-gradient(ellipse at center, rgba(37,99,235,0.18) 0%, rgba(6,182,212,0.08) 40%, transparent 70%)"></div>
+    <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-28 text-center">
+      <a href="{{GITHUB_URL}}" class="inline-flex items-center gap-2 px-3 py-1 mb-6 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-xs sm:text-sm font-semibold text-emerald-300 no-underline hover:bg-emerald-500/15">Open source &middot; Apache-2.0<span class="hidden sm:inline"> &middot; Free, no paid plans</span></a>
+      <h1 class="text-4xl md:text-6xl font-extrabold text-white leading-[1.08] tracking-tight max-w-4xl mx-auto">Fill your QuickBooks Online sandbox with realistic test data</h1>
+      <p class="mt-6 text-base md:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">Fill a QuickBooks Online (QBO) sandbox with a year of connected invoices, bills, payments and payroll, then clear it with one command. Sandbox companies only &mdash; <a href="#trust" class="text-cyan-300 hover:text-cyan-200 underline underline-offset-2">we show you the line of code that guarantees it</a>.</p>
+      <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="/playground" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl shadow-lg shadow-blue-600/30 hover:-translate-y-px hover:shadow-xl hover:shadow-blue-600/40 transition-all no-underline">Try it in your browser</a>
+        <a href="{{APP_URL}}/login" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-white/10 border border-white/20 rounded-xl hover:bg-white/15 transition-colors no-underline">Fill my sandbox (free)</a>
+      </div>
+      <p class="mt-5 text-sm text-slate-400">
+        <a href="{{GITHUB_URL}}" class="inline-flex items-center gap-1.5 text-slate-300 hover:text-white no-underline">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          Star on GitHub
+        </a>
+        <span class="hidden sm:inline mx-2 text-slate-600">&middot;</span>
+        <span class="block sm:inline mt-2 sm:mt-0">The playground needs no account. Filling a sandbox needs a free <a href="https://developer.intuit.com" class="text-cyan-300 hover:text-cyan-200 underline underline-offset-2">Intuit developer account</a> and sandbox company.</span>
+      </p>
+      <div class="mt-10 grid grid-cols-2 sm:flex sm:items-center sm:justify-center gap-x-8 gap-y-2 text-sm text-slate-400 font-medium">
+        <span>{{TEMPLATE_COUNT}} industry templates</span>
+        <span>{{SCENARIO_COUNT}} scenarios</span>
+        <span>15 transaction types</span>
+        <span>Deterministic seeds</span>
+      </div>
+      <div class="mt-8 max-w-3xl mx-auto bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-3 text-left overflow-x-auto">
+        <code class="text-sm text-emerald-400 font-mono whitespace-nowrap"><span class="text-slate-500 select-none">$ </span>npx easytestdata generate --template saas --scenario rapid-growth --seed 42 --start-date 2025-09-01 --format csv --output ./sample-data</code>
+      </div>
+      <p class="mt-3 text-xs text-slate-500">Generating files needs no account. Same seed and dates, same data, on any machine.</p>
+    </div>
+  </section>
+
+  <section id="teaser" class="py-16 md:py-20 bg-slate-900">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <div class="text-center max-w-2xl mx-auto">
+        <h2 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">See the books before you connect anything</h2>
+        <p class="mt-3 text-base text-slate-400">Real output from the open-source engine, generated in your browser. Change the template or scenario and it regenerates instantly.</p>
+      </div>
+      <div class="mt-10 bg-[#0c1222] border border-slate-700 rounded-2xl p-4 sm:p-6 shadow-2xl">
+        <div class="flex flex-col md:flex-row md:items-end gap-4">
+          <div class="flex-1">
+            <label for="teaser-template" class="block text-xs font-semibold text-slate-300 mb-1">Template</label>
+            <select id="teaser-template" class="w-full h-10 rounded-lg bg-slate-900 border border-slate-600 text-white px-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">{{TEMPLATE_OPTIONS}}</select>
+          </div>
+          <div class="flex-1">
+            <label for="teaser-preset" class="block text-xs font-semibold text-slate-300 mb-1">Scenario</label>
+            <select id="teaser-preset" class="w-full h-10 rounded-lg bg-slate-900 border border-slate-600 text-white px-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">{{PRESET_OPTIONS}}</select>
+          </div>
+          <div class="flex items-end gap-3">
+            <p class="text-sm text-slate-400 whitespace-nowrap pb-2">Seed <span id="teaser-seed" class="font-mono text-slate-200">{{TEASER_SEED}}</span></p>
+            <button type="button" id="teaser-shuffle" class="h-10 px-4 rounded-lg bg-white/10 border border-white/20 text-sm font-semibold text-white hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">Shuffle</button>
+          </div>
+        </div>
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div class="lg:col-span-2">
+            <div id="teaser-stats" class="grid grid-cols-2 gap-3">{{TEASER_STATS}}</div>
+            <div class="mt-5 text-slate-400">
+              <div class="flex items-center justify-between text-xs text-slate-300 mb-2"><span class="font-semibold">Revenue vs expenses by month</span><span class="flex gap-3">{{CHART_LEGEND}}</span></div>
+              <div id="teaser-chart">{{TEASER_CHART}}</div>
+            </div>
+          </div>
+          <div class="lg:col-span-3 min-w-0">
+            <p class="text-xs font-semibold text-slate-300 mb-2">A few of the <span id="teaser-total">{{TEASER_TOTAL}}</span> generated transactions</p>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead><tr class="text-left text-xs text-slate-400"><th scope="col" class="pb-2 pr-3 font-semibold">Date</th><th scope="col" class="pb-2 pr-3 font-semibold">Type</th><th scope="col" class="hidden sm:table-cell pb-2 pr-3 font-semibold">Name</th><th scope="col" class="pb-2 font-semibold text-right">Amount</th></tr></thead>
+                <tbody id="teaser-ledger">{{TEASER_LEDGER}}</tbody>
+              </table>
+            </div>
+            <div class="mt-5 flex flex-col sm:flex-row gap-3 sm:items-center">
+              <a id="teaser-open" href="/playground" class="shrink-0 whitespace-nowrap inline-flex items-center justify-center px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg no-underline hover:from-blue-700 hover:to-cyan-600">Open the full playground</a>
+              <span class="text-xs text-slate-400">Tables, charts, JSON and CSV downloads, and the matching CLI command.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 text-center tracking-tight">Not just random rows</h2>
+      <p class="mt-3 text-base text-slate-600 text-center max-w-2xl mx-auto">The data is synthetic, but the accounting relationships are real, so reports and integrations behave the way they will with a customer's books.</p>
+      <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Financially coherent</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">Invoices and sales receipts add up to the revenue target; bills, expenses and payroll add up to the expense budget. Payments point at real invoices.</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Industry-specific</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">Each template sets its own service items, expense categories, cash-vs-invoice mix, payment timing and estimate/PO rates.</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">The messy stuff</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">Partial payments, unpaid invoices, credit memos, vendor credits and refund receipts: the edge cases that break integrations.</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Deterministic seeds</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">Same template, scenario, dates and seed produce the same data every time, so bugs reproduce across machines and CI runs.</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">One-command cleanup</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">Everything is tagged <code class="text-slate-800">EZTD</code>. Purge deletes the transactions it added, makes its customers, vendors, employees and items inactive (accounts stay), and never touches records you made by hand (<a href="/faq#purge" class="text-blue-700 underline">details</a>).</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">JSON and CSV too</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">No QBO sandbox yet? <code class="text-slate-800">easytestdata generate</code> writes the same plan to JSON or CSV for fixtures and seed scripts.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-20 bg-slate-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 text-center tracking-tight">From empty sandbox to a year of books</h2>
+      <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div>
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-extrabold inline-flex items-center justify-center">1</div>
+          <h3 class="mt-4 text-lg font-bold text-slate-900">Connect a sandbox</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">Authorize a QBO sandbox company with Intuit OAuth, from the CLI (<code class="text-slate-800">easytestdata auth</code>), the app on your own computer, or EasyTestData Cloud. Sandbox companies only, by design.</p>
+        </div>
+        <div>
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-extrabold inline-flex items-center justify-center">2</div>
+          <h3 class="mt-4 text-lg font-bold text-slate-900">Pick a template and scenario</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">{{TEMPLATE_COUNT}} industries and {{SCENARIO_COUNT}} scenarios, from a quick three-month demo to a fast-growing company or messy books full of credits and refunds. Or set revenue, target profit, customers and dates yourself.</p>
+        </div>
+        <div>
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-extrabold inline-flex items-center justify-center">3</div>
+          <h3 class="mt-4 text-lg font-bold text-slate-900">Load, test, clear</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">Records load in dependency order within QBO's API rate limits, with live progress. A typical 12-month run is {{TXN_MIN}}&ndash;{{TXN_MAX}} transactions depending on the scenario.</p>
+        </div>
+      </div>
+      <p class="mt-10 text-center text-sm text-slate-600"><a href="/how-it-works" class="font-semibold text-blue-700 underline">See each step with the commands</a><span class="block sm:inline mt-2 sm:mt-0 sm:ml-3">New to QBO sandboxes? Read <a href="/blog/quickbooks-online-sandbox-guide" class="text-blue-700 underline">how to create, reset and fill one</a>.</span></p>
+    </div>
+  </section>
+
+  <section id="trust" class="py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 text-center tracking-tight">Why you can trust it in your sandbox</h2>
+      <p class="mt-3 text-base text-slate-600 text-center max-w-2xl mx-auto">Not a promise, a design. Here is what keeps EasyTestData away from real books.</p>
+      <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-slate-50 border border-emerald-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">One line of code refuses production</h3>
+          <p class="text-sm text-slate-600 leading-relaxed"><code class="text-slate-800">assertSandboxBaseUrl</code> in <a href="https://github.com/easytestdata/easytestdata/blob/main/packages/qbo-client/src/qbo-client.js" class="text-blue-700 underline">qbo-client.js</a> throws for any API host other than <code class="text-slate-800">sandbox-quickbooks.api.intuit.com</code>. Every request goes through it. The production QuickBooks address doesn't appear anywhere in the source code; the tests use it only to prove the check rejects it.</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Intuit's keys only open sandboxes</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">EasyTestData uses Intuit <em>development</em> keys, and Intuit only lets development keys authorize sandbox companies. Your real company can't be connected even by mistake.</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">One OAuth scope, nothing else</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">The only permission requested is <code class="text-slate-800">com.intuit.quickbooks.accounting</code>. No payments, no payroll service, no profile data beyond what QBO returns for the sandbox company.</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">What's stored, and when it's gone</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">In the web app, on EasyTestData Cloud or on your own computer: the sandbox's realm ID, its company name, and the OAuth tokens encrypted with AES-256-GCM. Disconnect the sandbox and they're deleted. The CLI keeps its tokens in a local file on your machine.</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 md:col-span-2">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Tagged going in, cleared by tag going out</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">Every generated record carries the <code class="text-slate-800">EZTD</code> tag (in a document number, memo or note field, never the display name). Purge deletes the tagged transactions and makes the tagged customers, vendors, employees and items inactive, because QuickBooks doesn't allow deleting those. Accounts it created stay. Load two datasets with different tags and you can clear them separately. Anything you entered by hand is never touched.</p>
+        </div>
+      </div>
+      <p class="mt-6 text-center text-sm text-slate-500">The whole thing is open source under Apache-2.0, so you can read every line: <a href="{{GITHUB_URL}}" class="text-blue-700 underline">easytestdata/easytestdata</a>.</p>
+    </div>
+  </section>
+
+  <section class="py-20 bg-[#0c1222]">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white text-center tracking-tight">Open source first. Cloud if you want it.</h2>
+      <p class="mt-3 text-base text-slate-400 text-center max-w-2xl mx-auto">Every package, including the web app, is Apache-2.0 and free. Run it on your own computer with no limits, or let us run it for you on EasyTestData Cloud.</p>
+      <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <div class="bg-white/5 border border-emerald-500/40 rounded-2xl p-6 sm:p-8 flex flex-col">
+          <h3 class="text-xl font-bold text-white">On your computer</h3>
+          <ul class="mt-5 space-y-2 text-sm text-slate-300 flex-1">
+            <li>&#10003; Apache-2.0, every package</li>
+            <li>&#10003; No limits on connections, jobs or records</li>
+            <li>&#10003; No account or sign-in, your own Intuit app</li>
+            <li>&#10003; One command: <code>npx easytestdata ui</code></li>
+          </ul>
+          <a href="/run-locally" class="mt-6 inline-flex items-center justify-center px-5 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 no-underline">Run it locally</a>
+        </div>
+        <div class="bg-white/5 border border-white/15 rounded-2xl p-6 sm:p-8 flex flex-col">
+          <h3 class="text-xl font-bold text-white">EasyTestData Cloud</h3>
+          <ul class="mt-5 space-y-2 text-sm text-slate-300 flex-1">
+            <li>&#10003; Free, with generous limits to prevent abuse</li>
+            <li>&#10003; Nothing to install or operate</li>
+            <li>&#10003; Teams included</li>
+            <li>&#10003; Same open-source code as the local app</li>
+          </ul>
+          <a href="{{APP_URL}}/login" class="mt-6 inline-flex items-center justify-center px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg hover:from-blue-700 hover:to-cyan-600 no-underline">Start free on Cloud</a>
+        </div>
+      </div>
+      <p class="mt-6 text-center text-sm text-slate-400">No credit card, no paid plans. <a href="/faq" class="text-cyan-300 underline underline-offset-2">Is it really free?</a></p>
+    </div>
+  </section>
+
+  <section class="py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 text-center tracking-tight">Built for people who work with QBO</h2>
+      <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <a href="/use-cases/qbo-app-developers" class="block bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 hover:shadow-lg hover:-translate-y-0.5 transition-all no-underline">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">QBO app developers</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">Test sync, pagination and reporting against hundreds of invoices with partial payments and credits, not three hand-typed ones.</p>
+        </a>
+        <a href="/use-cases/ci-cd-testing" class="block bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 hover:shadow-lg hover:-translate-y-0.5 transition-all no-underline">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">CI/CD pipelines</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">Generate fixtures with a fixed seed, or run load &rarr; test &rarr; purge against a sandbox from the CLI.</p>
+        </a>
+        <a href="/use-cases/accounting-firms" class="block bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 hover:shadow-lg hover:-translate-y-0.5 transition-all no-underline">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Consultants and trainers</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">A construction firm, a restaurant or a nonprofit in a sandbox for a demo or class, then purged when you're done.</p>
+        </a>
+        <a href="/use-cases" class="block bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 hover:shadow-lg hover:-translate-y-0.5 transition-all no-underline">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">QA and testers</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">Reproducible datasets for report, aggregation and aging tests. Same seed, same numbers.</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-[#0c1222] py-20 text-center">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Stop hand-entering test data.</h2>
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="/playground" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl shadow-lg shadow-blue-600/30 no-underline">Try it in your browser</a>
+        <a href="{{APP_URL}}/login" class="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-base font-bold text-white bg-white/10 border border-white/20 rounded-xl hover:bg-white/15 no-underline">Fill my sandbox (free)</a>
+      </div>
+      <p class="mt-5 text-sm text-slate-400">or <a href="{{GITHUB_URL}}" class="text-cyan-300 underline underline-offset-2">star it on GitHub</a> and run it locally with no limits.</p>
+    </div>
+  </section>
+</main>
+<script type="module" src="{{TEASER_JS}}"></script>

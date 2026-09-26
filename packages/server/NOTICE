@@ -1,0 +1,11 @@
+EasyTestData
+Copyright 2024-2026 EasyTestData Contributors
+
+This product includes software developed at
+https://github.com/easytestdata/easytestdata
+
+Licensed under the Apache License, Version 2.0.
+
+The bundled web app (web-dist) includes components derived from shadcn/ui
+(https://ui.shadcn.com), Copyright (c) 2023 shadcn, licensed under the MIT License. See
+THIRD_PARTY_NOTICES.md in this package for the full license text.

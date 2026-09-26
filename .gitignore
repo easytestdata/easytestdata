@@ -1,0 +1,47 @@
+node_modules/
+dist/
+.turbo/
+coverage/
+
+# Environment
+.env
+.env.local
+.env.production
+.env.*
+!.env.example
+
+# Config with secrets
+.easytestdata.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Build artifacts
+*.tgz
+*.tsbuildinfo
+
+# Local runtime artifacts
+backups/
+data/
+
+# Package manager
+.pnpm-store/
+**/.pnpm-store/
+# Local agent worktrees
+.claude/worktrees/
+
+# Example output
+examples/**/output/
+
+# Built web app copied into the server package for publishing (scripts/copy-web-dist.mjs)
+packages/server/web-dist/

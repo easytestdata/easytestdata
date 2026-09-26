@@ -1,0 +1,59 @@
+name: Release
+
+# On every push to main, Changesets either opens/updates a "Version packages" pull request
+# (when unreleased changesets exist) or, once that PR is merged, publishes the new versions
+# of core, qbo-client, shared, server and the CLI to npm with provenance and creates GitHub
+# releases.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: github.repository == 'easytestdata/easytestdata'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: write # version commits, tags, GitHub releases
+      pull-requests: write # the "Version packages" pull request
+      id-token: write # npm provenance / trusted publishing
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.4
+
+      - uses: actions/setup-node@v6
+        with:
+          # Node 24 like the rest of the project.
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      # npm trusted publishing needs npm 11.5.1+; a Node 24 release may bundle an older npm.
+      - run: npm install -g npm@^11.5.1 && npm --version
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm run test
+
+      - uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          publish: pnpm changeset publish
+          title: "Version packages"
+          commit: "Version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Only needed for the very first publish; afterwards use npm trusted publishing
+          # (see docs/releasing.md) and delete this secret.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"

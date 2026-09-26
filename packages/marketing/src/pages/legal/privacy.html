@@ -1,0 +1,88 @@
+<!--
+title: Privacy Policy | EasyTestData for QuickBooks Online
+description: Privacy Policy for the EasyTestData website and EasyTestData Cloud.
+canonical: /legal/privacy
+og_type: website
+-->
+
+<main>
+  <section class="py-16 md:py-20 bg-white">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 prose prose-slate">
+      <h1>Privacy Policy</h1>
+      <p class="text-sm text-slate-500">Effective Date: September 24, 2026</p>
+      <p>This policy covers the easytestdata.com website and EasyTestData Cloud. Copies of EasyTestData that you run yourself (for example with <code>npx easytestdata ui</code> on your own computer) send nothing to us and are not covered here. The <a href="/playground">playground</a> generates data entirely in your browser; nothing you generate there is sent to us.</p>
+      <p>EasyTestData is free. We do not sell anything, do not collect payment information, and do not run product analytics or advertising trackers.</p>
+
+      <h2>1. Information We Collect</h2>
+      <div class="overflow-x-auto">
+        <table>
+          <thead><tr><th>Category</th><th>Data Collected</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Account</td><td>Email address, display name, avatar (OAuth)</td><td>Authentication, communication</td></tr>
+            <tr><td>Authentication</td><td>OAuth provider ID</td><td>Account security</td></tr>
+            <tr><td>QBO Connection</td><td>Sandbox realm ID, company name, OAuth tokens (encrypted, deleted when you disconnect)</td><td>Loading and purging your sandbox</td></tr>
+            <tr><td>Usage</td><td>Job counts, record counts per month</td><td>Enforcing the abuse limits of the shared service</td></tr>
+            <tr><td>Technical</td><td>IP address, browser type, request logs, error reports</td><td>Security, debugging</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>2. How We Use Your Information</h2>
+      <ul>
+        <li>Provide and maintain the Service</li>
+        <li>Authenticate your identity and manage your account</li>
+        <li>Monitor service health and debug issues</li>
+        <li>Enforce usage limits and prevent abuse</li>
+      </ul>
+
+      <h2>3. Data Storage and Security</h2>
+      <p>Your data is stored in a PostgreSQL database hosted on secure infrastructure. Security measures include:</p>
+      <ul>
+        <li>QBO OAuth tokens are encrypted at rest using AES-256 with unique initialization vectors per record</li>
+        <li>All connections use TLS/HTTPS</li>
+        <li>JWT tokens with short expiry (15 minutes) and rotating refresh tokens</li>
+      </ul>
+
+      <h2>4. Service Providers</h2>
+      <p>We share limited data with the following providers, only as needed to run the Service:</p>
+      <div class="overflow-x-auto">
+        <table>
+          <thead><tr><th>Provider</th><th>Data Shared</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Cloudflare</td><td>IP address, request metadata</td><td>Content delivery, DNS, security and bot protection</td></tr>
+            <tr><td>Sentry (only if error tracking is enabled on the deployment)</td><td>Error reports, request metadata</td><td>Error tracking, not analytics</td></tr>
+            <tr><td>Intuit (QuickBooks Online API)</td><td>OAuth tokens, generated test data</td><td>Loading and purging data in your QBO sandbox</td></tr>
+            <tr><td>Google, GitHub, Intuit sign-in</td><td>OAuth profile (if you choose that sign-in method)</td><td>Authentication</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>We do not use analytics providers, advertising networks or payment processors, and we do not sell your data to third parties.</p>
+
+      <h2>5. Cookies and Local Storage</h2>
+      <p>We use browser local storage to persist authentication tokens (JWT access and refresh tokens). We do not use analytics or advertising cookies, so there is no cookie banner.</p>
+
+      <h2>6. Data Retention</h2>
+      <ul>
+        <li><strong>Account data:</strong> Kept while your account exists, and deleted when you ask us to delete your account</li>
+        <li><strong>Job artifacts (generated files):</strong> Deleted automatically about a week after the job finishes</li>
+        <li><strong>QBO tokens:</strong> Deleted immediately when a connection is removed</li>
+        <li><strong>Logs and error reports:</strong> Kept only as long as needed for security and debugging</li>
+      </ul>
+
+      <h2>7. Your Rights</h2>
+      <p>You can access, correct, export or delete your personal data. The web app lets you remove QBO connections yourself (finished jobs and their downloads expire on their own, see above); for everything else, including correcting your account details, exporting your data or deleting your whole account, email <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a> and we will do it for you.</p>
+
+      <h2>8. Children's Privacy</h2>
+      <p>The Service is not intended for use by individuals under the age of 16. We do not knowingly collect personal information from children.</p>
+
+      <h2>9. International Data Transfers</h2>
+      <p>Your data may be processed in the United States. By using the Service, you consent to data transfer to and processing in the US.</p>
+
+      <h2>10. Changes to This Policy</h2>
+      <p>We may update this Privacy Policy periodically. We post changes on this page and update the "Effective Date" at the top to reflect the most recent revision.</p>
+
+      <h2>11. Contact</h2>
+      <p>For privacy-related inquiries, email <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a>.</p>
+    </div>
+  </section>
+</main>

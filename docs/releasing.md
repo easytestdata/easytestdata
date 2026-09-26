@@ -26,7 +26,9 @@ lets it prove this.
 
 Trusted publishing needs npm 11.5.1 or later, so the release workflow installs it before
 publishing (a Node 24 release may bundle an older npm); `pnpm publish` (pnpm 9) hands the actual
-upload to that npm.
+upload to that npm. The workflow's `actions/setup-node` step has no `registry-url`: that option
+makes it write an `.npmrc` that authenticates with a token, which would take the place of trusted
+publishing.
 
 A new published package needs a trusted publisher too, and npm only lets you add one to a
 package that already exists: publish its first version by hand from its directory with

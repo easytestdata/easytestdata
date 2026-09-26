@@ -36,7 +36,9 @@ jobs:
           # Node 24 like the rest of the project.
           node-version: 24
           cache: pnpm
-          registry-url: https://registry.npmjs.org
+          # No registry-url: with it, setup-node writes an .npmrc that authenticates with
+          # NODE_AUTH_TOKEN (a placeholder when unset), and npm would try that instead of
+          # trusted publishing. npm's default registry is already registry.npmjs.org.
 
       # npm trusted publishing needs npm 11.5.1+; a Node 24 release may bundle an older npm.
       - run: npm install -g npm@^11.5.1 && npm --version

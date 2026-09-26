@@ -34,6 +34,10 @@ logs/
 backups/
 data/
 
+# A server's own deploy script and PM2 settings (docs/deploy-cloudpanel.md)
+/deploy.sh
+/ecosystem.config.cjs
+
 # Package manager
 .pnpm-store/
 **/.pnpm-store/

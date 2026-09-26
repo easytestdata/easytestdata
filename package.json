@@ -29,7 +29,7 @@
     "@changesets/cli": "^3",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.11.0",
-    "prettier": "^3.9.8",
+    "prettier": "^3.9.9",
     "semver": "^7",
     "turbo": "^2.11.3",
     "vitest": "^5.0.1",

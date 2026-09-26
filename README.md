@@ -10,6 +10,7 @@ invoices, bills, payments, payroll, journal entries) and purge it cleanly when y
 [![CI](https://github.com/easytestdata/easytestdata/actions/workflows/ci.yml/badge.svg)](https://github.com/easytestdata/easytestdata/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/easytestdata?label=npm%20easytestdata)](https://www.npmjs.com/package/easytestdata)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/easytestdata/easytestdata/badge)](https://scorecard.dev/viewer/?uri=github.com/easytestdata/easytestdata)
 
 [**Try it in your browser**](https://easytestdata.com/playground) ·
 [Run it locally](docs/run-locally.md) ·

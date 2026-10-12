@@ -61,7 +61,7 @@
     "zod": "^4.6.5"
   },
   "peerDependencies": {
-    "@tanstack/react-query": "^5.103.2"
+    "@tanstack/react-query": "^5.104.1"
   },
   "peerDependenciesMeta": {
     "@tanstack/react-query": {
@@ -69,7 +69,7 @@
     }
   },
   "devDependencies": {
-    "@tanstack/react-query": "^5.103.2",
+    "@tanstack/react-query": "^5.104.1",
     "typescript": "^7.0.2"
   }
 }

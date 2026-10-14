@@ -36,6 +36,21 @@ export function SentryProvider({ children }: { children: ReactNode }) {
             dsn: config.sentryDsn!,
             environment: import.meta.env.MODE,
             tracesSampleRate: import.meta.env.MODE === "production" ? 0.1 : 1.0,
+            // Preserve v10's collection defaults rather than enabling v11's broader collection.
+            dataCollection: {
+              userInfo: false,
+              cookies: false,
+              httpHeaders: {
+                request: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+                response: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] }
+              },
+              httpBodies: [],
+              urlQueryParams: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+              genAI: { inputs: false, outputs: false },
+              databaseQueryData: false,
+              queues: false,
+              graphQL: { document: false, variables: false }
+            },
             replaysSessionSampleRate: 0
           });
           sentryModule = Sentry;

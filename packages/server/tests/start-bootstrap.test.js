@@ -66,7 +66,10 @@ vi.mock("../src/local/instance-lock.js", () => ({
   })
 }));
 const sentryInit = vi.hoisted(() => vi.fn());
-vi.mock("@sentry/node", () => ({ init: sentryInit }));
+vi.mock("@sentry/node", async (importOriginal) => ({
+  ...(await importOriginal()),
+  init: sentryInit
+}));
 vi.mock("../src/logger.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn() }
 }));
@@ -100,10 +103,65 @@ describe("bootstrap", () => {
     }
     expect(sentryInit).toHaveBeenCalledWith(
       expect.objectContaining({
+        traceLifecycle: "static",
+        dataCollection: expect.objectContaining({
+          userInfo: false,
+          cookies: false,
+          httpBodies: [],
+          databaseQueryData: false
+        }),
         beforeSend: scrubSentryEvent,
         beforeSendTransaction: scrubSentryEvent
       })
     );
+  });
+
+  it("keeps query credentials out of the real SDK's outgoing transactions", async () => {
+    vi.stubEnv("SENTRY_DSN", "https://key@sentry.example/1");
+    try {
+      await bootstrap({ listen: false });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    const Sentry = await vi.importActual("@sentry/node");
+    const envelopes = [];
+    Sentry.init({
+      ...sentryInit.mock.lastCall[0],
+      integrations: [],
+      tracesSampleRate: 1,
+      transport: () => ({
+        send: async (envelope) => {
+          envelopes.push(envelope);
+          return { statusCode: 200 };
+        },
+        flush: async () => true
+      })
+    });
+    try {
+      Sentry.startSpan({ name: "GET /callback", op: "http.server" }, () => {
+        Sentry.startSpan(
+          {
+            name: "GET https://oauth.example/callback?code=private-oauth-code",
+            op: "http.client",
+            attributes: {
+              "url.full": "https://oauth.example/callback?code=private-oauth-code",
+              "url.query": "code=private-oauth-code"
+            }
+          },
+          () => {}
+        );
+      });
+      await Sentry.flush(2000);
+      const transactions = envelopes.flatMap(([, items]) =>
+        items.filter(([header]) => header.type === "transaction").map(([, event]) => event)
+      );
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0].spans).toHaveLength(1);
+      expect(JSON.stringify(transactions)).not.toContain("private-oauth-code");
+      expect(JSON.stringify(transactions)).toContain("[redacted]");
+    } finally {
+      await Sentry.close(2000);
+    }
   });
 
   it("refuses to start while another server holds the database lock, touching nothing", async () => {

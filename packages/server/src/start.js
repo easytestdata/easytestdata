@@ -29,6 +29,25 @@ function checkStartupConfig() {
       dsn: process.env.SENTRY_DSN,
       environment: config.nodeEnv,
       tracesSampleRate: config.nodeEnv === "production" ? 0.1 : 1.0,
+      // v11 streams spans by default, bypassing beforeSendTransaction. Keep our URL scrubber.
+      traceLifecycle: "static",
+      // Our error handler owns 5xx reporting and adds sanitized request context.
+      integrations: [Sentry.expressIntegration({ shouldHandleError: false })],
+      // Preserve v10's collection defaults; v11 otherwise collects bodies, cookies and DB data.
+      dataCollection: {
+        userInfo: false,
+        cookies: false,
+        httpHeaders: {
+          request: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+          response: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] }
+        },
+        httpBodies: [],
+        urlQueryParams: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+        genAI: { inputs: false, outputs: false },
+        databaseQueryData: false,
+        queues: false,
+        graphQL: { document: false, variables: false }
+      },
       beforeSend: scrubSentryEvent,
       beforeSendTransaction: scrubSentryEvent
     });

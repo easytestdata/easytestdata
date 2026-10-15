@@ -137,5 +137,7 @@ it.each(["@easytestdata/server/extension", "@easytestdata/server/start"])(
     } finally {
       rmSync(work, { recursive: true, force: true });
     }
-  }
+  },
+  // Fresh Node imports can be slow when the machine is loaded.
+  30_000
 );

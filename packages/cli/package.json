@@ -1,6 +1,6 @@
 {
   "name": "easytestdata",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Realistic test data for QuickBooks Online sandboxes: generate synthetic accounting data offline or load it into a QBO sandbox.",
   "license": "Apache-2.0",
   "engines": {

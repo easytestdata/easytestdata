@@ -201,6 +201,8 @@ describe("request logging never records credentials", () => {
       "http.response.header.Location": "/login?auth_code=secret",
       "custom.url": ["/callback?code=secret", "/callback#secret"],
       "custom.QUERY": ["state=secret", "token=secret"],
+      "url.fragment": "secret",
+      "custom.FRAGMENT": ["secret"],
       "http.target": "/callback?state=secret",
       "http.status_code": 302
     };

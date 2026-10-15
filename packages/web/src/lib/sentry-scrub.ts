@@ -29,6 +29,29 @@ export function scrubSentryEvent<T extends Event>(event: T): T {
     }
     scrubbed.request = request;
   }
+  // GlobalHandlers can use location.href as a source-less error's frame filename.
+  if (event.exception?.values) {
+    scrubbed.exception = {
+      ...event.exception,
+      values: event.exception.values.map((exception) => {
+        if (!exception.stacktrace?.frames) return exception;
+        return {
+          ...exception,
+          stacktrace: {
+            ...exception.stacktrace,
+            frames: exception.stacktrace.frames.map((frame) => {
+              const scrubbedFrame = { ...frame };
+              for (const key of ["filename", "abs_path"] as const) {
+                const url = frame[key];
+                if (typeof url === "string") scrubbedFrame[key] = stripQueryAndFragment(url);
+              }
+              return scrubbedFrame;
+            })
+          }
+        };
+      })
+    };
+  }
   // Also handle breadcrumbs supplied on the event rather than through addBreadcrumb.
   if (event.breadcrumbs) scrubbed.breadcrumbs = event.breadcrumbs.map(scrubSentryBreadcrumb);
   return scrubbed;

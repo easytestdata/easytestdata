@@ -46,4 +46,71 @@ describe("Sentry URL scrubbing", () => {
       data: { url: 42, from: null }
     });
   });
+
+  it("scrubs every exception's frame URLs while preserving stack locations and the input", () => {
+    const event: Event = {
+      exception: {
+        values: [
+          {
+            type: "TypeError",
+            value: "Outer error",
+            stacktrace: {
+              frames: [
+                {
+                  filename: "https://app.example/assets/app.js?code=private-code#private-fragment",
+                  abs_path: "https://app.example/assets/app.js#private-fragment",
+                  lineno: 17,
+                  colno: 23,
+                  function: "load",
+                  in_app: true
+                },
+                { filename: "/assets/vendor.js", lineno: 3, colno: 5 },
+                { function: "nativeCall" }
+              ]
+            }
+          },
+          {
+            value: "Inner error",
+            stacktrace: {
+              frames: [
+                { filename: "/login#private-fragment", abs_path: "/login?state=private-state" }
+              ]
+            }
+          },
+          { value: "No stack" }
+        ]
+      }
+    };
+    const original = JSON.stringify(event);
+    const scrubbed = scrubSentryEvent(event);
+    expect(scrubbed.exception).toEqual({
+      values: [
+        {
+          type: "TypeError",
+          value: "Outer error",
+          stacktrace: {
+            frames: [
+              {
+                filename: "https://app.example/assets/app.js",
+                abs_path: "https://app.example/assets/app.js",
+                lineno: 17,
+                colno: 23,
+                function: "load",
+                in_app: true
+              },
+              { filename: "/assets/vendor.js", lineno: 3, colno: 5 },
+              { function: "nativeCall" }
+            ]
+          }
+        },
+        {
+          value: "Inner error",
+          stacktrace: { frames: [{ filename: "/login", abs_path: "/login" }] }
+        },
+        { value: "No stack" }
+      ]
+    });
+    expect(JSON.stringify(scrubbed)).not.toMatch(/private-/);
+    expect(JSON.stringify(event)).toBe(original);
+  });
 });

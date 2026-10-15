@@ -25,8 +25,8 @@ function scrubSpanData(data) {
   if (!data || typeof data !== "object") return data;
   const scrubbed = { ...data };
   for (const [key, value] of Object.entries(scrubbed)) {
-    // A bare query has no '?' to strip. Match SDK header attributes as well as URL fields.
-    if (/query/i.test(key)) delete scrubbed[key];
+    // Bare query/fragment attributes have no delimiter to strip, so drop their contents.
+    if (/query|fragment/i.test(key)) delete scrubbed[key];
     else if (/url|referr?er|location/i.test(key) || key === "http.target") {
       scrubbed[key] = Array.isArray(value)
         ? value.map((item) => stripQuery(item, true))

@@ -153,7 +153,7 @@ export function errorHandler(err, req, res, _next) {
         }
         scope.setTag("requestId", req.id);
         scope.setExtra("method", req.method);
-        scope.setExtra("url", stripQuery(req.originalUrl));
+        scope.setExtra("url", stripQuery(req.originalUrl, true));
         scope.setExtra("requestBody", sanitizeBody(req.body));
         Sentry.captureException(err);
       });

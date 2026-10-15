@@ -44,6 +44,27 @@ async function transformHtml(config: UserConfig) {
 }
 
 describe("createWebConfig", () => {
+  it.each([false, true])(
+    "dedupes shared context packages with an external build: %s",
+    (external) => {
+      const config = createWebConfig(
+        external
+          ? {
+              rootDir: tempDir,
+              extensionModule: join(tempDir, "extensions.ts"),
+              brandFile: brandFile(metadata)
+            }
+          : {}
+      );
+      expect(config.resolve?.dedupe).toEqual([
+        "react",
+        "react-dom",
+        "react-router-dom",
+        "@tanstack/react-query"
+      ]);
+    }
+  );
+
   it("preserves absolute public paths, aliases, port, proxy and sourcemaps", async () => {
     const config = createWebConfig();
     expect(publicConfig).toMatchObject({

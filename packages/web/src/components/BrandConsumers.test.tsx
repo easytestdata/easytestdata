@@ -99,6 +99,22 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+it.each(["cloud", "local"] as const)(
+  "omits About license claims for a sandbox-only brand without a repository in %s mode",
+  async (deployment) => {
+    Object.assign(brand, { repoUrl: null, supportsSourceReads: false });
+    appConfig.deployment = deployment;
+    const { container } = renderBrand(<AboutSection />);
+    await screen.findByText("Reachable");
+    expect(container).not.toHaveTextContent(/Apache|open source/i);
+    expect(container).toHaveTextContent(
+      `${brand.name} only connects to QuickBooks Online (QBO) sandbox companies. QBO API calls are hard-coded to the sandbox endpoint, so this ${deployment === "local" ? "app" : "service"} never connects to a production company.`
+    );
+    expect(screen.getByText("Sandbox only")).toBeInTheDocument();
+    expect(container.querySelector('a[href*="github.com"]')).toBeNull();
+  }
+);
+
 describe.each([false, true])("brand consumers (source reads: %s)", (sourceReads) => {
   beforeEach(() => {
     if (sourceReads) Object.assign(brand, sourceBrand);

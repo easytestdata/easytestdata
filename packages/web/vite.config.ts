@@ -94,6 +94,7 @@ export function createWebConfig({
       }
     ],
     resolve: {
+      dedupe: ["react", "react-dom", "react-router-dom", "@tanstack/react-query"],
       alias: {
         "@": resolve(webDir, "src"),
         "@ui": resolve(webDir, "../ui/src"),

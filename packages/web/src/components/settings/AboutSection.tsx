@@ -79,8 +79,8 @@ export function AboutSection() {
               <>
                 {name} only connects to QuickBooks Online (QBO) sandbox companies. QBO API calls are
                 hard-coded to the sandbox endpoint, so this {local ? "app" : "service"} never
-                connects to a production company. {name} is open source under the Apache 2.0
-                license.
+                connects to a production company.
+                {repoUrl !== null && ` ${name} is open source under the Apache 2.0 license.`}
               </>
             )}
           </p>

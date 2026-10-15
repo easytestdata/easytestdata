@@ -10,6 +10,7 @@ import { SandboxNextSteps } from "../job-detail/SandboxNextSteps";
 import { readJobProgress, useJobProgressLog } from "../job-detail/useJobProgressLog";
 import type { Job } from "../../types";
 import { toast } from "sonner";
+import { useProductBrand } from "../../brand";
 
 interface InlineJobProgressProps {
   job: Job;
@@ -32,6 +33,7 @@ export function InlineJobProgress({
   onRollback,
   onViewDetails
 }: InlineJobProgressProps) {
+  const { name } = useProductBrand();
   const [step, setStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(0);
   const [message, setMessage] = useState("");
@@ -92,7 +94,8 @@ export function InlineJobProgress({
   const isDownloadJob = job.type === "generate" || job.type === "export";
   const isRollback = job.type === "rollback";
   const isPurge = job.type === "purge";
-  const eraseAll = isPurge && (job.config as Record<string, unknown> | undefined)?.purgeMode === "all";
+  const eraseAll =
+    isPurge && (job.config as Record<string, unknown> | undefined)?.purgeMode === "all";
   const sandboxName = connectionName || "the QuickBooks sandbox";
 
   if (isCompleted && isDownloadJob) {
@@ -165,10 +168,7 @@ export function InlineJobProgress({
       >
         <div className="flex flex-col items-center gap-3">
           <h3
-            className={cn(
-              "text-lg font-semibold",
-              partial ? "text-amber-900" : "text-emerald-900"
-            )}
+            className={cn("text-lg font-semibold", partial ? "text-amber-900" : "text-emerald-900")}
           >
             {partial
               ? eraseAll
@@ -181,7 +181,7 @@ export function InlineJobProgress({
           <p className={cn("text-sm", partial ? "text-amber-800" : "text-emerald-700")}>
             {partial
               ? partialPurgeOutcome(job, sandboxName, failures)
-              : purgeOutcome(job, sandboxName, eraseAll)}
+              : purgeOutcome(job, sandboxName, eraseAll, name)}
           </p>
           <div className="mt-2 flex gap-2">
             {onViewDetails && (
@@ -283,8 +283,8 @@ export function InlineJobProgress({
                     ? `Erasing all data in ${sandboxName}`
                     : `Removing test data from ${sandboxName}`
                   : connectionName
-                  ? `Loading your company into ${connectionName}`
-                  : "Loading your company into the QuickBooks sandbox"}
+                    ? `Loading your company into ${connectionName}`
+                    : "Loading your company into the QuickBooks sandbox"}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -366,10 +366,15 @@ export function InlineJobProgress({
 
 /** What a finished Remove test data or Erase all data did. Accounts always stay, and QuickBooks
  *  cannot delete customers, vendors, employees or items, so those are made inactive. */
-function purgeOutcome(job: Job, sandboxName: string, eraseAll: boolean): string {
+export function purgeOutcome(
+  job: Job,
+  sandboxName: string,
+  eraseAll: boolean,
+  productName = "EasyTestData"
+): string {
   const summary = job.result_summary;
   const deleted = summary?.deletedTotal ?? summary?.totalDeleted ?? job.entity_count;
-  const whose = eraseAll ? "" : " EasyTestData";
+  const whose = eraseAll ? "" : ` ${productName}`;
   const count = deleted != null ? `${deleted}${whose} transaction(s)` : `The${whose} transactions`;
   return (
     `${count} were deleted from ${sandboxName}. ` +
@@ -381,7 +386,8 @@ function purgeOutcome(job: Job, sandboxName: string, eraseAll: boolean): string 
 function partialPurgeOutcome(job: Job, sandboxName: string, failures: number): string {
   const summary = job.result_summary;
   const deleted = summary?.deletedTotal ?? summary?.totalDeleted ?? job.entity_count;
-  const done = deleted != null ? `${deleted} transaction(s) were deleted from ${sandboxName}, but ` : "";
+  const done =
+    deleted != null ? `${deleted} transaction(s) were deleted from ${sandboxName}, but ` : "";
   return (
     `${done}${failures} operation(s) failed, so some records remain. ` +
     "Open View details to see which, then run it again."

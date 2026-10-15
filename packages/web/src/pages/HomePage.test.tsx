@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { defaultPeriod, formatDateRange } from "@easytestdata/ui";
+import { defaultPeriod, formatDateRange, ProductBrandProvider } from "@easytestdata/ui";
 import { HomePage, getResultOneLiner, connectionHasPreviousLoad } from "./HomePage";
 import type { Job, QboConnection } from "@/api/client";
 import { authorizeConnection } from "@/api/client";
@@ -27,8 +27,7 @@ const hookState = vi.hoisted(() => ({
   jobs: [] as Array<Record<string, unknown>>,
   health: { status: "ok" } as { status: string } | undefined,
   usage: undefined as
-    | { deployment: string; limits: { loadsPerMonth: number }; usage: { loads: number } }
-    | undefined,
+    { deployment: string; limits: { loadsPerMonth: number }; usage: { loads: number } } | undefined,
   templates: [
     { id: "professional-services", name: "Professional Services", description: "Consulting" },
     { id: "retail", name: "Retail / eCommerce", description: "Shops" }
@@ -204,6 +203,50 @@ describe("HomePage actions", () => {
     cleanup();
   });
 
+  it("uses the alternate product name in the welcome", () => {
+    hookState.connections = [];
+    renderWithClient(
+      <ProductBrandProvider
+        value={{ name: "Other Product", repoUrl: null, supportsSourceReads: true }}
+      >
+        <HomePage />
+      </ProductBrandProvider>
+    );
+    expect(screen.getByRole("heading", { name: "Welcome to Other Product" })).toBeInTheDocument();
+  });
+
+  it.each(["purge", "disconnect", "erase"])(
+    "uses the alternate product name in the %s control",
+    (action) => {
+      renderWithClient(
+        <ProductBrandProvider
+          value={{ name: "Other Product", repoUrl: null, supportsSourceReads: true }}
+        >
+          <HomePage />
+        </ProductBrandProvider>
+      );
+      const remove = screen.getByRole("button", { name: "Remove test data from Acme Books" });
+      const erase = screen.getByRole("button", { name: "Erase all data in Acme Books" });
+      expect(remove).toHaveAttribute(
+        "title",
+        "Delete Other Product's transactions (tagged EZTD). Your own records stay."
+      );
+      expect(erase).toHaveAttribute(
+        "title",
+        "Delete every transaction of the types Other Product loads, including ones you entered (owner or admin only)"
+      );
+      fireEvent.click(
+        action === "purge"
+          ? remove
+          : action === "erase"
+            ? erase
+            : screen.getByRole("button", { name: "Disconnect Acme Books" })
+      );
+      expect(screen.getByRole("alertdialog")).toHaveTextContent("Other Product");
+      expect(screen.getByRole("alertdialog")).not.toHaveTextContent("EasyTestData");
+    }
+  );
+
   it("locks connection test controls against duplicate clicks until the test settles", () => {
     renderWithClient(<HomePage />);
 
@@ -217,9 +260,7 @@ describe("HomePage actions", () => {
       expect.objectContaining({ onSettled: expect.any(Function) })
     );
     expect(testButton).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Remove test data from Acme Books" })
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Remove test data from Acme Books" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Erase all data in Acme Books" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Disconnect Acme Books" })).toBeDisabled();
 
@@ -542,7 +583,13 @@ describe("HomePage actions", () => {
     renderWithClient(<HomePage />);
 
     const table = await screen.findByRole("table");
-    for (const label of ["Remove test data", "Erase all data", "Roll back", "Sample files", "Load"]) {
+    for (const label of [
+      "Remove test data",
+      "Erase all data",
+      "Roll back",
+      "Sample files",
+      "Load"
+    ]) {
       expect(within(table).getByText(label)).toBeInTheDocument();
     }
     expect(within(table).queryByText(/^purge$/i)).not.toBeInTheDocument();
@@ -659,9 +706,7 @@ describe("HomePage actions", () => {
 
     renderWithClient(<HomePage />);
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Make sample files/ })
-    );
+    fireEvent.click(await screen.findByRole("button", { name: /Make sample files/ }));
     fireEvent.click(screen.getByRole("button", { name: "Retail / eCommerce" }));
 
     await screen.findByText("~802 records");

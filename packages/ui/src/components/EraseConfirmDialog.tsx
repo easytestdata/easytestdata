@@ -10,6 +10,7 @@ import {
 } from "./ui/alert-dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { useProductBrand } from "../brand";
 
 interface EraseConfirmDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ export function EraseConfirmDialog({
   onConfirm,
   pending = false
 }: EraseConfirmDialogProps) {
+  const { name } = useProductBrand();
   const [input, setInput] = useState("");
 
   useEffect(() => {
@@ -44,10 +46,9 @@ export function EraseConfirmDialog({
             <div className="space-y-2">
               <p>
                 This permanently deletes <strong>every</strong> invoice, bill, payment and other
-                transaction of the types EasyTestData loads, including ones you entered by hand,
-                not just EasyTestData's. Customers,
-                vendors, employees and items are made inactive (QuickBooks can't delete them).
-                Accounts stay.
+                transaction of the types {name} loads, including ones you entered by hand, not just{" "}
+                {name}'s. Customers, vendors, employees and items are made inactive (QuickBooks
+                can't delete them). Accounts stay.
               </p>
               <p>
                 Type <strong>ERASE</strong> below to confirm.

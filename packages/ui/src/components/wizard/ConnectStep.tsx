@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { OAuthFlowSvg } from "../svg/OAuthFlowSvg";
 import { cn } from "../../lib/utils";
+import { useProductBrand } from "../../brand";
 import type { QboConnection } from "../../types";
 
 /** How a connection's stored-token health reads in the list (the server rates it by age). */
@@ -86,6 +87,7 @@ export function ConnectStep({
   setupHref,
   describeConnectError
 }: ConnectStepProps) {
+  const { name, supportsSourceReads } = useProductBrand();
   const [connecting, setConnecting] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -214,9 +216,10 @@ export function ConnectStep({
           </div>
           <h2 className="text-xl font-semibold">Connect your QuickBooks Online sandbox</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Sign in with your Intuit developer account and pick the sandbox company to fill. Sandbox
-            companies only: EasyTestData refuses any non-sandbox QuickBooks address, and Intuit
-            development keys can only connect sandbox companies.
+            Sign in with your Intuit developer account and pick the sandbox company to fill.{" "}
+            {supportsSourceReads
+              ? "Generated data can only be loaded into sandbox companies."
+              : `Sandbox companies only: ${name} refuses any non-sandbox QuickBooks address, and Intuit development keys can only connect sandbox companies.`}
           </p>
           {connectOpensSetup ? (
             <Button
@@ -398,7 +401,7 @@ export function ConnectStep({
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
         title="Disconnect this sandbox?"
-        description="EasyTestData forgets this sandbox and its tokens. Data already in QuickBooks stays. You can reconnect anytime."
+        description={`${name} forgets this sandbox and its tokens. Data already in QuickBooks stays. You can reconnect anytime.`}
         confirmLabel="Disconnect"
         onConfirm={handleDelete}
         destructive

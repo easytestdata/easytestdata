@@ -16,6 +16,7 @@ import { useAppConfig } from "@/contexts/AppConfigContext";
 import { connectErrorMessage } from "@/connect-errors";
 import {
   useScenarioForm,
+  useProductBrand,
   WizardStepper,
   ConnectStep,
   LoadStep,
@@ -259,6 +260,7 @@ function LoadAllowance() {
 /* ── Main component ─────────────────────────────────────────── */
 
 export function HomePage() {
+  const { name } = useProductBrand();
   const { data: connections = NO_CONNECTIONS, isLoading: connectionsLoading } = useConnections();
   const { data: jobs = NO_JOBS, isLoading: jobsLoading } = useJobs();
   const createJob = useCreateJob();
@@ -626,7 +628,7 @@ export function HomePage() {
           <div className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/10 blur-3xl" />
           <div className="relative z-10">
             <h1 className="text-2xl font-bold tracking-tight text-white">
-              {isFirstTime ? "Welcome to EasyTestData" : "Load test data"}
+              {isFirstTime ? `Welcome to ${name}` : "Load test data"}
             </h1>
             <p className="mt-1 text-slate-400">
               {isFirstTime
@@ -756,7 +758,7 @@ export function HomePage() {
                   size="sm"
                   className="h-7 px-2 text-xs"
                   aria-label={`Remove test data from ${conn.company_name || "QBO Sandbox"}`}
-                  title="Delete EasyTestData's transactions (tagged EZTD). Your own records stay."
+                  title={`Delete ${name}'s transactions (tagged EZTD). Your own records stay.`}
                   onClick={(e) => {
                     e.stopPropagation();
                     setPurgeConfirmId(conn.id);
@@ -771,7 +773,7 @@ export function HomePage() {
                   size="sm"
                   className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
                   aria-label={`Erase all data in ${conn.company_name || "QBO Sandbox"}`}
-                  title="Delete every transaction of the types EasyTestData loads, including ones you entered (owner or admin only)"
+                  title={`Delete every transaction of the types ${name} loads, including ones you entered (owner or admin only)`}
                   onClick={(e) => {
                     e.stopPropagation();
                     setEraseConnectionId(conn.id);
@@ -974,7 +976,7 @@ export function HomePage() {
         title={`Disconnect ${
           connections.find((c) => c.id === disconnectId)?.company_name || "this sandbox"
         }?`}
-        description="EasyTestData forgets this sandbox and its tokens. Data already in QuickBooks stays. You can reconnect anytime."
+        description={`${name} forgets this sandbox and its tokens. Data already in QuickBooks stays. You can reconnect anytime.`}
         confirmLabel="Disconnect"
         onConfirm={handleDisconnect}
         destructive
@@ -986,7 +988,7 @@ export function HomePage() {
         open={!!purgeConfirmId}
         onOpenChange={(open) => !open && setPurgeConfirmId(null)}
         title="Remove test data?"
-        description="This deletes the transactions EasyTestData added (tagged EZTD) and makes its customers, vendors, employees and items inactive (QuickBooks can't delete them). Accounts it created stay. Records you created by hand are not touched."
+        description={`This deletes the transactions ${name} added (tagged EZTD) and makes its customers, vendors, employees and items inactive (QuickBooks can't delete them). Accounts it created stay. Records you created by hand are not touched.`}
         confirmLabel="Remove test data"
         onConfirm={handlePurge}
         destructive

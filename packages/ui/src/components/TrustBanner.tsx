@@ -1,5 +1,6 @@
 import { Shield, Lock, KeyRound, Tag } from "lucide-react";
 import { cn } from "../lib/utils";
+import { useProductBrand } from "../brand";
 
 interface TrustBannerProps {
   variant?: "full" | "compact" | "badge";
@@ -13,9 +14,11 @@ export const REPO_URL = "https://github.com/easytestdata/easytestdata";
 export const SANDBOX_GUARD_SOURCE_URL = `${REPO_URL}/blob/main/packages/qbo-client/src/qbo-client.js`;
 
 function GuardLink() {
+  const { repoUrl } = useProductBrand();
+  if (repoUrl === null) return null;
   return (
     <a
-      href={SANDBOX_GUARD_SOURCE_URL}
+      href={`${repoUrl}/blob/main/packages/qbo-client/src/qbo-client.js`}
       target="_blank"
       rel="noopener noreferrer"
       className="underline underline-offset-2 hover:text-emerald-950"
@@ -27,6 +30,22 @@ function GuardLink() {
 }
 
 export function TrustBanner({ variant = "full", className }: TrustBannerProps) {
+  const { name, repoUrl, supportsSourceReads } = useProductBrand();
+  const message = (
+    <>
+      {supportsSourceReads
+        ? "Generated data is only ever loaded into sandbox companies"
+        : `${name} refuses any non-sandbox QuickBooks address`}
+      {repoUrl !== null && (
+        <>
+          {" "}
+          &mdash; <GuardLink />
+        </>
+      )}
+      .
+    </>
+  );
+
   if (variant === "badge") {
     return (
       <span
@@ -36,7 +55,7 @@ export function TrustBanner({ variant = "full", className }: TrustBannerProps) {
         )}
       >
         <Shield className="h-3 w-3" />
-        Sandbox only
+        {supportsSourceReads ? "Generated data: sandbox only" : "Sandbox only"}
       </span>
     );
   }
@@ -51,8 +70,7 @@ export function TrustBanner({ variant = "full", className }: TrustBannerProps) {
       >
         <Shield className="h-4 w-4 text-emerald-600" />
         <span>
-          <strong>Sandbox companies only.</strong> EasyTestData refuses any non-sandbox QuickBooks
-          address &mdash; <GuardLink />.
+          <strong>Sandbox companies only.</strong> {message}
         </span>
       </div>
     );
@@ -74,9 +92,7 @@ export function TrustBanner({ variant = "full", className }: TrustBannerProps) {
           <ul className="space-y-1.5 text-sm text-emerald-800">
             <li className="flex items-start gap-2">
               <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-              <span>
-                EasyTestData refuses any non-sandbox QuickBooks address &mdash; <GuardLink />.
-              </span>
+              <span>{message}</span>
             </li>
             <li className="flex items-start gap-2">
               <KeyRound className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />

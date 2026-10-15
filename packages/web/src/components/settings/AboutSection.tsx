@@ -7,19 +7,12 @@ import {
   CardTitle,
   Badge,
   Button,
-  BrandLogo,
-  REPO_URL,
+  useProductBrand,
   SandboxBadge
 } from "@easytestdata/ui";
 import { CLIENT_HEADERS } from "@easytestdata/shared/api-client";
 import { useAppConfig } from "@/contexts/AppConfigContext";
-
-const RESOURCES = [
-  { label: "GitHub repository", href: REPO_URL },
-  { label: "Run it locally", href: `${REPO_URL}/blob/main/docs/run-locally.md` },
-  { label: "Documentation (README)", href: `${REPO_URL}#readme` },
-  { label: "Report an issue", href: `${REPO_URL}/issues` }
-];
+import { brand } from "../../brand";
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -31,6 +24,8 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 export function AboutSection() {
+  const { name, repoUrl, supportsSourceReads } = useProductBrand();
+  const BrandLogo = brand.logo;
   const { version, deployment, qboConfigured, qboRedirectUri } = useAppConfig();
   const local = deployment === "local";
   const [apiReachable, setApiReachable] = useState<boolean | null>(null);
@@ -45,33 +40,49 @@ export function AboutSection() {
     };
   }, []);
 
-  const modeLabel = local ? "Local" : "EasyTestData Cloud";
+  const modeLabel = local ? "Local" : `${name} Cloud`;
+  const resources =
+    repoUrl === null
+      ? []
+      : [
+          { label: "GitHub repository", href: repoUrl },
+          { label: "Run it locally", href: `${repoUrl}/blob/main/docs/run-locally.md` },
+          { label: "Documentation (README)", href: `${repoUrl}#readme` },
+          { label: "Report an issue", href: `${repoUrl}/issues` }
+        ];
+  if (brand.companionUrl) {
+    resources.push({ label: brand.companionLabel ?? brand.companionUrl, href: brand.companionUrl });
+  }
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>About EasyTestData</CardTitle>
+          <CardTitle>About {name}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3">
             <BrandLogo className="h-8 w-8" />
             <div>
-              <h3 className="font-semibold">EasyTestData</h3>
-              <p className="text-sm text-muted-foreground">
-                Realistic test data for QuickBooks Online sandboxes.
-              </p>
+              <h3 className="font-semibold">{name}</h3>
+              <p className="text-sm text-muted-foreground">{brand.description}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">{modeLabel}</Badge>
-            <SandboxBadge />
+            {!supportsSourceReads && <SandboxBadge />}
           </div>
           <p className="text-sm text-muted-foreground">
-            EasyTestData only connects to QuickBooks Online (QBO) sandbox companies. QBO API calls
-            are hard-coded to the sandbox endpoint, so this {local ? "app" : "service"} never
-            connects to a production company. EasyTestData is open source under the Apache 2.0
-            license.
+            {supportsSourceReads ? (
+              "Real companies are read only. Generated data goes only to sandboxes."
+            ) : (
+              <>
+                {name} only connects to QuickBooks Online (QBO) sandbox companies. QBO API calls are
+                hard-coded to the sandbox endpoint, so this {local ? "app" : "service"} never
+                connects to a production company. {name} is open source under the Apache 2.0
+                license.
+              </>
+            )}
           </p>
         </CardContent>
       </Card>
@@ -125,7 +136,8 @@ export function AboutSection() {
               <p className="text-sm font-medium">Intuit OAuth redirect URI</p>
               <p className="text-xs text-muted-foreground">
                 Register this exact URI in your Intuit developer app (sandbox keys).
-                {!qboConfigured && " Then add the app's keys on the setup page (Connect a sandbox)."}
+                {!qboConfigured &&
+                  " Then add the app's keys on the setup page (Connect a sandbox)."}
               </p>
               <code className="block break-all rounded bg-background px-2 py-1 font-mono text-sm">
                 {qboRedirectUri}
@@ -140,7 +152,7 @@ export function AboutSection() {
           <CardTitle>Resources</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {RESOURCES.map((r) => (
+          {resources.map((r) => (
             <Button
               key={r.href}
               variant="ghost"

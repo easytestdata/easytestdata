@@ -21,6 +21,7 @@ import type { CreateJobBody } from "@easytestdata/shared/api-client";
 import type { Job, JobResultSummary } from "../types";
 import { toast } from "sonner";
 import { X, RotateCcw, RefreshCw } from "lucide-react";
+import { useProductBrand } from "../brand";
 
 interface JobDetailSheetProps {
   open: boolean;
@@ -41,6 +42,7 @@ export function JobDetailSheet({
   onJobStarted,
   connectionName
 }: JobDetailSheetProps) {
+  const { name } = useProductBrand();
   const [rollingBack, setRollingBack] = useState(false);
   const [confirmLoadAgain, setConfirmLoadAgain] = useState(false);
   // Fetch full detail (includes result.failures) in background
@@ -250,7 +252,7 @@ export function JobDetailSheet({
         open={confirmLoadAgain}
         onOpenChange={setConfirmLoadAgain}
         title="Load again with new data?"
-        description={loadAgainDescription(displayJob, connectionName)}
+        description={loadAgainDescription(displayJob, connectionName, name)}
         confirmLabel="Load again"
         onConfirm={handleRerun}
         pending={createJob.isPending}
@@ -262,13 +264,17 @@ export function JobDetailSheet({
 
 /** What "Load again (new data)" will do: same settings and a new seed, so different records,
  *  and whatever the original load's "remove existing test data first" choice was. */
-export function loadAgainDescription(job: Job, sandboxName?: string): string {
+export function loadAgainDescription(
+  job: Job,
+  sandboxName?: string,
+  productName = "EasyTestData"
+): string {
   const cfg = (job.config || {}) as Record<string, unknown>;
   const sandbox = sandboxName || "the sandbox";
   const size = job.entity_count ? `about ${job.entity_count.toLocaleString("en-US")} ` : "";
   const fresh = `This loads a new company with the same settings but different, newly generated data (${size}records).`;
   if (cfg.purgeMode === "all") {
-    return `${fresh} It first erases all data in ${sandbox}, as the original load did: every transaction of the types EasyTestData loads is deleted, including ones you entered by hand, and all customers, vendors, employees and items are made inactive. Accounts stay.`;
+    return `${fresh} It first erases all data in ${sandbox}, as the original load did: every transaction of the types ${productName} loads is deleted, including ones you entered by hand, and all customers, vendors, employees and items are made inactive. Accounts stay.`;
   }
   if (cfg.purgeMode === "generated") {
     return `${fresh} It first removes the existing test data (tagged ${(cfg.tag as string) || "EZTD"}) from ${sandbox}, as the original load did.`;

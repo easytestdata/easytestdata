@@ -1,5 +1,6 @@
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
+import { useProductBrand } from "../../brand";
 import {
   formatCurrency,
   formatNumber,
@@ -35,6 +36,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export function JobConfigSummary({ config, type }: JobConfigSummaryProps) {
+  const { name } = useProductBrand();
   const templateId = config.templateId as string | undefined;
   const companyName = config.companyName as string | undefined;
   const tag = config.tag as string | undefined;
@@ -55,8 +57,8 @@ export function JobConfigSummary({ config, type }: JobConfigSummaryProps) {
           {purgeMode ? (
             <Row label="Removes">
               {purgeMode === "all"
-                ? "Every transaction of the types EasyTestData loads, including yours; customers, vendors, employees and items made inactive; accounts kept"
-                : "EasyTestData's transactions; its customers, vendors, employees and items made inactive; accounts kept"}
+                ? `Every transaction of the types ${name} loads, including yours; customers, vendors, employees and items made inactive; accounts kept`
+                : `${name}'s transactions; its customers, vendors, employees and items made inactive; accounts kept`}
             </Row>
           ) : null}
         </DL>

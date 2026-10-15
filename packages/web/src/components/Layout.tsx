@@ -3,9 +3,10 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppConfig } from "../contexts/AppConfigContext";
 import extensions from "@easytestdata/web-extensions";
+import { brand } from "../brand";
 import { Home, Settings, Menu, LogOut, ChevronDown, Shield, CodeXml } from "lucide-react";
 import {
-  BrandLogo,
+  useProductBrand,
   cn,
   Button,
   Avatar,
@@ -21,8 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SandboxBadge,
-  REPO_URL
+  SandboxBadge
 } from "@easytestdata/ui";
 
 const NAV_ITEMS = [
@@ -40,6 +40,8 @@ function getInitials(name: string) {
 }
 
 export function Layout() {
+  const { name, repoUrl, supportsSourceReads } = useProductBrand();
+  const BrandLogo = brand.logo;
   const { user, logout, isAdmin } = useAuth();
   // Local mode has one built-in user: nothing to sign out of.
   const canSignOut = useAppConfig().deployment !== "local";
@@ -65,7 +67,7 @@ export function Layout() {
         {/* Left: Brand */}
         <Link to="/home" className="flex items-center gap-2 mr-8">
           <BrandLogo className="h-7 w-7" />
-          <span className="text-lg font-bold">EasyTestData</span>
+          <span className="text-lg font-bold">{name}</span>
         </Link>
 
         {/* Center-left: Nav links */}
@@ -107,17 +109,29 @@ export function Layout() {
 
         {/* Right: Sandbox badge + user dropdown */}
         <div className="ml-auto flex items-center gap-3">
-          <a
-            href={REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title="EasyTestData is open source under Apache-2.0"
-          >
-            <CodeXml className="h-4 w-4" />
-            Open source
-          </a>
-          <SandboxBadge />
+          {repoUrl !== null && (
+            <a
+              href={repoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title={`${name} is open source under Apache-2.0`}
+            >
+              <CodeXml className="h-4 w-4" />
+              Open source
+            </a>
+          )}
+          {brand.companionUrl && (
+            <a
+              href={brand.companionUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              {brand.companionLabel ?? brand.companionUrl}
+            </a>
+          )}
+          {!supportsSourceReads && <SandboxBadge />}
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -166,12 +180,14 @@ export function Layout() {
               <SheetHeader className="h-16 px-6">
                 <SheetTitle className="flex items-center gap-2 text-sidebar-foreground">
                   <BrandLogo className="h-8 w-8" />
-                  EasyTestData
+                  {name}
                 </SheetTitle>
               </SheetHeader>
-              <div className="px-6 pb-3">
-                <SandboxBadge />
-              </div>
+              {!supportsSourceReads && (
+                <div className="px-6 pb-3">
+                  <SandboxBadge />
+                </div>
+              )}
               <nav className="flex-1 overflow-auto py-4 px-3 space-y-1">
                 {[...NAV_ITEMS, ...extensions.navItems].map((item) => {
                   const Icon = item.icon;
@@ -208,15 +224,27 @@ export function Layout() {
                     Admin
                   </Link>
                 )}
-                <a
-                  href={REPO_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                >
-                  <CodeXml className="h-4 w-4" />
-                  Open source (Apache-2.0)
-                </a>
+                {repoUrl !== null && (
+                  <a
+                    href={repoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  >
+                    <CodeXml className="h-4 w-4" />
+                    Open source (Apache-2.0)
+                  </a>
+                )}
+                {brand.companionUrl && (
+                  <a
+                    href={brand.companionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  >
+                    {brand.companionLabel ?? brand.companionUrl}
+                  </a>
+                )}
               </nav>
               {user && (
                 <div className="border-t border-sidebar-border p-3">
@@ -252,10 +280,8 @@ export function Layout() {
             </div>
           </SheetContent>
         </Sheet>
-        <span className="text-lg font-bold">EasyTestData</span>
-        <div className="ml-auto">
-          <SandboxBadge />
-        </div>
+        <span className="text-lg font-bold">{name}</span>
+        <div className="ml-auto">{!supportsSourceReads && <SandboxBadge />}</div>
       </header>
 
       {/* Main content area — full width */}

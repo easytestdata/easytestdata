@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InlineJobProgress, type Job } from "@easytestdata/ui";
+import { purgeOutcome } from "@ui/components/wizard/InlineJobProgress";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -21,6 +22,26 @@ function purgeJob(overrides: Partial<Job> = {}): Job {
     ...overrides
   } as Job;
 }
+
+describe("purgeOutcome", () => {
+  it("preserves the public default output", () => {
+    expect(purgeOutcome(purgeJob(), "Acme Books", false)).toBe(
+      "42 EasyTestData transaction(s) were deleted from Acme Books. Its customers, vendors, employees and items were made inactive; accounts stay."
+    );
+  });
+
+  it("names the supplied product in a generated-data removal", () => {
+    expect(purgeOutcome(purgeJob(), "Acme Books", false, "Other Product")).toBe(
+      "42 Other Product transaction(s) were deleted from Acme Books. Its customers, vendors, employees and items were made inactive; accounts stay."
+    );
+  });
+
+  it("keeps an all-data erase broader than any product's generated records", () => {
+    expect(purgeOutcome(purgeJob(), "Acme Books", true, "Other Product")).toBe(
+      "42 transaction(s) were deleted from Acme Books. All customers, vendors, employees and items were made inactive; accounts stay."
+    );
+  });
+});
 
 // A remove or erase used to fall through to the load view: "Your company is loaded",
 // "42 records created" (42 was the number deleted) and a "Load more data" button.
@@ -97,7 +118,11 @@ describe("InlineJobProgress for a load with refused records", () => {
       />
     );
     expect(screen.getByText("Your company is partly loaded")).toBeInTheDocument();
-    expect(screen.getByText(/QuickBooks refused 3 record\(s\); everything else was created in Acme Books/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /QuickBooks refused 3 record\(s\); everything else was created in Acme Books/
+      )
+    ).toBeInTheDocument();
     expect(screen.queryByText("Your company is loaded")).not.toBeInTheDocument();
     screen.getByRole("button", { name: "View details" }).click();
     expect(onViewDetails).toHaveBeenCalled();

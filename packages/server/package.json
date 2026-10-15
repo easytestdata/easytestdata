@@ -20,7 +20,9 @@
   "main": "src/server.js",
   "exports": {
     ".": "./src/server.js",
-    "./local": "./src/local/start-local.js"
+    "./local": "./src/local/start-local.js",
+    "./extension": "./src/extension-api.js",
+    "./start": "./src/start.js"
   },
   "files": [
     "src",

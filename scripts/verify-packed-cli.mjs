@@ -3,10 +3,11 @@
 // app. Catches files missing from a package's "files", workspace-only imports and devDependencies
 // used at runtime, and checks that the packed @easytestdata/shared exposes only JavaScript entry
 // points that exist in its tarball, each with its .d.ts (Node cannot load its TypeScript sources,
-// and strict TypeScript consumers need the declarations; scripts/shared-entry-points.mjs). Needs
+// and strict TypeScript consumers need the declarations; scripts/shared-entry-points.mjs). Also
+// imports the server's extension/start subpaths without starting HTTP or opening the database. Needs
 // the web app built first (`pnpm run build`); `npm install` downloads the
 // third-party dependencies from the registry.
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -134,6 +135,64 @@ async function main() {
       throw new Error(`the packed install pulled in ${name}`);
     }
   }
+
+  const imported = spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "--eval",
+      `
+        import assert from "node:assert/strict";
+        import { Server } from "node:net";
+        let listens = 0;
+        Server.prototype.listen = () => {
+          listens++;
+          throw new Error("Import must not listen");
+        };
+        const extension = await import("@easytestdata/server/extension");
+        const start = await import("@easytestdata/server/start");
+        const functions = [
+          "query", "transaction", "rollback",
+          "encryptTokenPair", "decryptTokenPair", "encryptValue", "decryptValue",
+          "beginOAuthState", "consumeOAuthState", "OAuthStateError",
+          "authenticate", "requireRole", "requireTeamManager",
+          "withConnectionLock", "ConnectionLockBusyError", "lockTeam", "AppError"
+        ];
+        assert.deepEqual(Object.keys(extension).sort(), [...functions, "config", "logger"].sort());
+        for (const name of functions) assert.equal(typeof extension[name], "function", name);
+        for (const name of ["config", "logger"]) {
+          assert.equal(typeof extension[name], "object", name);
+          assert.notEqual(extension[name], null, name);
+        }
+        for (const name of ["bootstrap", "handleShutdownSignals", "runMigrations", "runMigrationCommand"]) {
+          assert.equal(typeof start[name], "function", name);
+        }
+        assert.equal(listens, 0);
+      `
+    ],
+    {
+      cwd: project,
+      env: {
+        PATH: process.env.PATH,
+        HOME: work,
+        DEPLOYMENT: "local",
+        EASYTESTDATA_DATA_DIR: join(work, "import-data")
+      },
+      encoding: "utf8",
+      timeout: 10_000,
+      killSignal: "SIGKILL"
+    }
+  );
+  if (imported.error) throw imported.error;
+  if (imported.status !== 0) {
+    throw new Error(`packed server imports failed (exit ${imported.status}): ${imported.stderr}`);
+  }
+  for (const file of ["db", "server.lock", "secret.key"]) {
+    if (existsSync(join(work, "import-data", file))) {
+      throw new Error(`packed server imports created ${file}`);
+    }
+  }
+  console.log("Packed server extension/start imports OK without startup side effects");
 
   const bin = join(project, "node_modules", "easytestdata", "bin", "easytestdata.js");
   // A clean environment: nothing from this shell (DATABASE_URL, APP_URL, LOG_LEVEL, ...) leaks

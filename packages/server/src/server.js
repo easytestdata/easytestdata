@@ -3,8 +3,10 @@ import compression from "compression";
 import cors from "cors";
 import passport from "passport";
 import { existsSync } from "node:fs";
+import { isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
+import { validateExtensions } from "./extensions.js";
 import { buildPublicConfig } from "./public-config.js";
 import { mountFrontend } from "./frontend.js";
 import { logger } from "./logger.js";
@@ -30,8 +32,17 @@ import { query } from "./db/pool.js";
 /**
  * Builds the Express app (API, health check, static frontend). It does not listen, start the job
  * runner or touch the database; start.js does that after migrations.
+ * Extensions own their routers' authentication. webDistDir overrides the built web app lookup.
  */
-export function createApp() {
+export function createApp({ extensions = [], webDistDir } = {}) {
+  validateExtensions(extensions);
+  if (
+    webDistDir !== undefined &&
+    (typeof webDistDir !== "string" || webDistDir.trim() === "" || !isAbsolute(webDistDir))
+  ) {
+    throw new Error("webDistDir must be a non-empty absolute directory path");
+  }
+
   const app = express();
   const local = config.deployment === "local";
 
@@ -113,15 +124,19 @@ export function createApp() {
   if (local) app.use("/api/v1/setup", setupRoutes());
   if (!local) app.use("/api/v1/admin", adminRoutes());
 
+  for (const extension of extensions) {
+    if (extension.router) app.use(`/api/v1/${extension.name}`, extension.router);
+  }
+
   // ── Static files + SPA fallback ─────────────────────────────────────────────
   // The built web app: the workspace's packages/web/dist when it exists (so a leftover web-dist
   // never shadows a fresh build), else web-dist inside the published package (copied by prepack).
   const workspace = fileURLToPath(new URL("../../web/dist", import.meta.url));
-  const webDistDir = existsSync(workspace)
-    ? workspace
-    : fileURLToPath(new URL("../web-dist", import.meta.url));
-  logger.info({ webDistDir }, "Serving web UI");
-  mountFrontend(app, { webDistDir });
+  const resolvedWebDistDir =
+    webDistDir ??
+    (existsSync(workspace) ? workspace : fileURLToPath(new URL("../web-dist", import.meta.url)));
+  logger.info({ webDistDir: resolvedWebDistDir }, "Serving web UI");
+  mountFrontend(app, { webDistDir: resolvedWebDistDir });
 
   app.use(errorHandler);
   return app;

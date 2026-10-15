@@ -64,14 +64,22 @@ describe("loadAgainDescription", () => {
   });
 
   it("says a load that removed test data first does so again", () => {
-    expect(loadAgainDescription(withConfig({ purgeMode: "generated", tag: "EZTD" }), "Acme Books")).toMatch(
-      /first removes the existing test data \(tagged EZTD\) from Acme Books/
-    );
+    expect(
+      loadAgainDescription(withConfig({ purgeMode: "generated", tag: "EZTD" }), "Acme Books")
+    ).toMatch(/first removes the existing test data \(tagged EZTD\) from Acme Books/);
   });
 
   it("says a load that erased everything first does so again", () => {
-    expect(loadAgainDescription(withConfig({ purgeMode: "all" }), "Acme Books")).toMatch(
-      /first erases all data in Acme Books, as the original load did: every transaction of the types EasyTestData loads is deleted, including ones you entered by hand.*Accounts stay\./
+    expect(loadAgainDescription(withConfig({ purgeMode: "all" }), "Acme Books")).toBe(
+      "This loads a new company with the same settings but different, newly generated data (about 120 records). It first erases all data in Acme Books, as the original load did: every transaction of the types EasyTestData loads is deleted, including ones you entered by hand, and all customers, vendors, employees and items are made inactive. Accounts stay."
+    );
+  });
+
+  it("uses an explicit product name without changing what will be erased", () => {
+    expect(
+      loadAgainDescription(withConfig({ purgeMode: "all" }), "Acme Books", "Other Product")
+    ).toBe(
+      "This loads a new company with the same settings but different, newly generated data (about 120 records). It first erases all data in Acme Books, as the original load did: every transaction of the types Other Product loads is deleted, including ones you entered by hand, and all customers, vendors, employees and items are made inactive. Accounts stay."
     );
   });
 });

@@ -3,6 +3,13 @@ import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, connectErrorMessage } from "./App";
+import { useProductBrand } from "@easytestdata/ui";
+import { brand } from "./brand";
+
+vi.mock("./brand", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./brand")>();
+  return { brand: { ...actual.brand } };
+});
 
 const authState = vi.hoisted(() => ({
   user: null as null | { id: string; email: string; displayName: string; avatarUrl: null },
@@ -60,7 +67,12 @@ vi.mock("./components/AdminLayout", () => ({
 }));
 
 vi.mock("./pages/HomePage", () => ({
-  HomePage: () => <div>home-page</div>
+  HomePage: () => (
+    <>
+      <div>home-page</div>
+      <p>{useProductBrand().name}</p>
+    </>
+  )
 }));
 
 vi.mock("./pages/SetupPage", () => ({
@@ -90,6 +102,7 @@ describe("App", () => {
 
   afterEach(() => {
     cleanup();
+    brand.name = "EasyTestData";
   });
 
   it("renders login screen for unauthenticated users", async () => {
@@ -104,6 +117,28 @@ describe("App", () => {
 
     expect(await screen.findByText(/Could not reach the local EasyTestData server/)).toBeVisible();
     expect(window.location.pathname).toBe("/home");
+  });
+
+  it("provides the build brand throughout the router", async () => {
+    brand.name = "Other Product";
+    authState.user = { id: "u1", email: "a@b.c", displayName: "A", avatarUrl: null };
+    renderAt("/home");
+    expect(await screen.findByText("Other Product")).toBeInTheDocument();
+  });
+
+  it("names the build brand when a local server cannot be reached", async () => {
+    brand.name = "Other Product";
+    appConfig.deployment = "local";
+    renderAt("/home");
+    expect(await screen.findByText(/Could not reach the local Other Product server/)).toBeVisible();
+  });
+
+  it("leaves reserved source callback keys for extension pages", async () => {
+    authState.user = { id: "u1", email: "a@b.c", displayName: "A", avatarUrl: null };
+    renderAt("/home?source_connected=true&source_error=state_invalid");
+    await screen.findByText("home-page");
+    expect(window.location.search).toBe("?source_connected=true&source_error=state_invalid");
+    expect(screen.queryByText(/connection link expired/)).not.toBeInTheDocument();
   });
 
   it("sends invite links home in local mode (no teams or invites there)", async () => {

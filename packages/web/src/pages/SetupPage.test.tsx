@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SetupPage } from "./SetupPage";
+import { ProductBrandProvider } from "@easytestdata/ui";
 
 const REDIRECT_URI = "http://localhost:28080/api/v1/connections/callback";
 
@@ -70,6 +71,25 @@ describe("SetupPage", () => {
 
     await waitFor(() => expect(authorizeMock).toHaveBeenCalledWith("redirect"));
     expect(refreshMock).toHaveBeenCalled();
+  });
+
+  it("names the alternate product while still requesting sandbox keys", async () => {
+    render(
+      <ProductBrandProvider
+        value={{ name: "Other Product", repoUrl: null, supportsSourceReads: true }}
+      >
+        <MemoryRouter>
+          <SetupPage />
+        </MemoryRouter>
+      </ProductBrandProvider>
+    );
+    await screen.findByText(REDIRECT_URI);
+    expect(
+      screen.getByText(/To load data into a QuickBooks Online sandbox, Other Product needs/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Then paste the app's development (sandbox) keys:")
+    ).toBeInTheDocument();
   });
 
   it("shows the redirect URI from GET /setup with a copy button", async () => {

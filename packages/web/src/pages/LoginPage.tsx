@@ -10,12 +10,12 @@ import {
   Button,
   Alert,
   AlertDescription,
-  BrandLogo,
-  DataPreviewSvg,
-  REPO_URL
+  useProductBrand,
+  DataPreviewSvg
 } from "@easytestdata/ui";
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { useAppConfig } from "@/contexts/AppConfigContext";
+import { brand } from "../brand";
 
 function oauthUrl(provider: string): string {
   return `/api/v1/auth/${provider}`;
@@ -59,6 +59,8 @@ function writePendingInvite(token: string | null) {
 
 /** Sign-in is Intuit, Google or GitHub only: the page is those buttons plus the OAuth return. */
 export function LoginPage() {
+  const { name, repoUrl, supportsSourceReads } = useProductBrand();
+  const BrandLogo = brand.logo;
   const { exchangeOAuthCode, user } = useAuth();
   const { enabledOAuthProviders, deployment, marketingUrl } = useAppConfig();
   // The hosted Terms of Service and the marketing site only exist on EasyTestData Cloud.
@@ -128,14 +130,14 @@ export function LoginPage() {
       <div className="relative z-10 flex flex-col items-center gap-6 text-center">
         <BrandLogo className="h-12 w-12" />
         <div>
-          <h1 className="text-2xl font-bold text-white">EasyTestData</h1>
-          <p className="mt-2 max-w-xs text-sm text-slate-400">
-            Realistic test data for QuickBooks Online sandboxes.
-          </p>
+          <h1 className="text-2xl font-bold text-white">{name}</h1>
+          <p className="mt-2 max-w-xs text-sm text-slate-400">{brand.description}</p>
         </div>
         <DataPreviewSvg className="mt-4 w-full max-w-[280px]" />
         <p className="mt-2 max-w-xs text-xs text-slate-500">
-          Sandbox-only: EasyTestData never connects to a production QuickBooks company.
+          {supportsSourceReads
+            ? "Real companies are read only. Generated data goes only to sandboxes."
+            : `Sandbox-only: ${name} never connects to a production QuickBooks company.`}
         </p>
       </div>
     </div>
@@ -223,18 +225,20 @@ export function LoginPage() {
             ) : (
               oauthButtons
             )}
-            <p className="mt-6 text-center text-xs text-muted-foreground">
-              Free and open source (Apache-2.0).{" "}
-              <a
-                href={REPO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                Read the code on GitHub
-              </a>
-              .
-            </p>
+            {repoUrl !== null && (
+              <p className="mt-6 text-center text-xs text-muted-foreground">
+                Free and open source (Apache-2.0).{" "}
+                <a
+                  href={repoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Read the code on GitHub
+                </a>
+                .
+              </p>
+            )}
             {showTerms && (
               <p className="mt-2 text-center text-xs text-muted-foreground">
                 By signing in you agree to the{" "}

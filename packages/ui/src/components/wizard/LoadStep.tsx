@@ -224,6 +224,7 @@ export function LoadStep({
                 <p className="mt-0.5 text-muted-foreground">{summary.duration}</p>
               )}
               {summary.overLimit && !summaryStale && (
+                // The unlimited local app is the free companion, regardless of this build's brand.
                 <p className="mt-2 flex items-center gap-2 text-destructive">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   That is more than the {formatNumber(estimate?.limit)} records allowed per job.
@@ -306,8 +307,8 @@ export function LoadStep({
           <div className="flex-1 space-y-2">
             <p>
               Loading adds to what is already in the sandbox. Every record is tagged{" "}
-              <code className="rounded bg-blue-100 px-1">EZTD</code>, so you can remove it later with
-              Remove test data.
+              <code className="rounded bg-blue-100 px-1">EZTD</code>, so you can remove it later
+              with Remove test data.
             </p>
             {hasPreviousLoad && (
               <label className="flex cursor-pointer items-center gap-2">

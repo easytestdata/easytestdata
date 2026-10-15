@@ -34,6 +34,7 @@ export * from "./components/ui/tabs";
 export * from "./components/ui/tooltip";
 
 // Shared Components
+export { ProductBrandProvider, useProductBrand } from "./brand";
 export { JobProgressModal } from "./components/JobProgressModal";
 export { JobDetailSheet, loadAgainDescription } from "./components/JobDetailSheet";
 export {

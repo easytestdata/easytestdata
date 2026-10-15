@@ -11,7 +11,8 @@ import {
   CardHeader,
   CardTitle,
   Input,
-  Label
+  Label,
+  useProductBrand
 } from "@easytestdata/ui";
 import { AlertCircle, Copy, ExternalLink, Loader2 } from "lucide-react";
 import { authorizeConnection, request } from "../api/client";
@@ -27,6 +28,7 @@ interface SetupStatus {
  * them encrypted; generating and downloading files never needs them.
  */
 export function SetupPage() {
+  const { name } = useProductBrand();
   const navigate = useNavigate();
   const { refresh, qboRedirectUri } = useAppConfig();
   const [status, setStatus] = useState<SetupStatus | null>(null);
@@ -103,8 +105,8 @@ export function SetupPage() {
         <CardHeader>
           <CardTitle>Connect QuickBooks: add your Intuit keys</CardTitle>
           <CardDescription>
-            To load data into a QuickBooks Online sandbox, EasyTestData needs the keys of your own
-            Intuit developer app. You only do this once; the keys stay on this computer, encrypted.
+            To load data into a QuickBooks Online sandbox, {name} needs the keys of your own Intuit
+            developer app. You only do this once; the keys stay on this computer, encrypted.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

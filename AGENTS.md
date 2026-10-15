@@ -143,6 +143,21 @@ Single source of truth for Zod validation schemas consumed by both `packages/ser
 
 ### `packages/web` — React/Vite Frontend
 
+The build-time brand lives in `src/brand.ts` (the `@easytestdata/web-brand` metadata and
+`@easytestdata/web-extensions` logo). `App` passes it through UI's `ProductBrandProvider`;
+shared UI consumers use `useProductBrand()` for the name, optional repository and
+`supportsSourceReads`, without importing web or its aliases. Web consumers use the same context
+and the build-time logo, description and optional companion links. Source-capable builds distinguish
+read-only real companies from generated data loaded only into sandboxes; the target wizard's
+TrustBanner always keeps that sandbox guarantee. Free local-app referrals keep the EasyTestData
+name. Source extensions reserve `source_connected`/`source_error` callback keys; shared connection
+toasts still consume `connected`/`error`. Server/marketing branding and shared Cloud-limit messages
+are outside this UI contract.
+
+A build supplying an external extension module must add Tailwind `@source` lines for its own
+sources in the consuming build's CSS entry. If its root is outside `packages/web`, it must also
+register `packages/web/src` there, using paths relative to that CSS entry.
+
 - React Router app entry at `src/App.tsx`; `useAppConfig().deployment` switches Cloud/local behaviour (local: no sign-in screens, `/setup` for Intuit keys, `/invite` goes home, and the local user is not an admin, so the admin area is unavailable)
 - Page entrypoints in `src/pages/`: `LoginPage` (the Intuit/Google/GitHub buttons and the `auth_code` exchange), `InvitePage`, `HomePage`, `SetupPage`, `SettingsPage`, and `pages/admin/`
 - API client + hooks in `src/api/client.ts` and `src/api/hooks.ts` (on top of the shared client)

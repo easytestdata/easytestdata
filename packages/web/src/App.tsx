@@ -11,11 +11,13 @@ import { HomePage } from "./pages/HomePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { InvitePage } from "./pages/InvitePage";
 import { SetupPage } from "./pages/SetupPage";
-import { Toaster, TooltipProvider } from "@easytestdata/ui";
+import { ProductBrandProvider, Toaster, TooltipProvider, useProductBrand } from "@easytestdata/ui";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Component, lazy, Suspense, useEffect, type ReactNode, type ReactElement } from "react";
 import { connectErrorMessage } from "./connect-errors";
+import extensions from "@easytestdata/web-extensions";
+import { brand } from "./brand";
 
 export { connectErrorMessage };
 
@@ -51,6 +53,7 @@ const ConnectionHealthPage = lazy(() =>
 );
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { name } = useProductBrand();
   const { user, loading } = useAuth();
   const { deployment } = useAppConfig();
   const location = useLocation();
@@ -80,8 +83,8 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
     return (
       <div className="flex h-screen items-center justify-center p-6 text-center">
         <p className="text-lg text-muted-foreground">
-          Could not reach the local EasyTestData server. Check that it is still running, then
-          refresh the page.
+          Could not reach the local {name} server. Check that it is still running, then refresh the
+          page.
         </p>
       </div>
     );
@@ -138,43 +141,59 @@ export function App() {
             <AuthProvider>
               <TooltipProvider delayDuration={300}>
                 <SentryErrorBoundary fallback={errorFallback}>
-                  <BrowserRouter>
-                    <Routes>
-                      <Route path="/login" element={<LoginPage />} />
-                      <Route path="/invite" element={<InviteRoute />} />
-                      {/* Main app routes */}
-                      <Route
-                        element={
-                          <ProtectedRoute>
-                            <Layout />
-                          </ProtectedRoute>
-                        }
-                      >
-                        <Route path="/home" element={<HomePage />} />
-                        <Route path="/setup" element={<SetupRoute />} />
-                        <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="/settings/:section" element={<SettingsPage />} />
-                      </Route>
-                      {/* Admin routes */}
-                      <Route
-                        element={
-                          <ProtectedRoute>
-                            <Suspense fallback={<RouteLoadingFallback />}>
-                              <AdminLayout />
-                            </Suspense>
-                          </ProtectedRoute>
-                        }
-                      >
-                        <Route path="/admin" element={<AdminDashboard />} />
-                        <Route path="/admin/users" element={<UserManagementPage />} />
-                        <Route path="/admin/users/:id" element={<UserDetailPage />} />
-                        <Route path="/admin/jobs" element={<JobManagementPage />} />
-                        <Route path="/admin/jobs/:id" element={<JobDetailPage />} />
-                        <Route path="/admin/connections" element={<ConnectionHealthPage />} />
-                      </Route>
-                      <Route path="*" element={<Navigate to="/home" replace />} />
-                    </Routes>
-                  </BrowserRouter>
+                  <ProductBrandProvider value={brand}>
+                    <BrowserRouter>
+                      <Routes>
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/invite" element={<InviteRoute />} />
+                        {/* Main app routes */}
+                        <Route
+                          element={
+                            <ProtectedRoute>
+                              <Layout />
+                            </ProtectedRoute>
+                          }
+                        >
+                          <Route path="/home" element={<HomePage />} />
+                          <Route path="/setup" element={<SetupRoute />} />
+                          <Route path="/settings" element={<SettingsPage />} />
+                          <Route path="/settings/:section" element={<SettingsPage />} />
+                          {extensions.routes.map((route) => {
+                            const Element = route.element;
+                            return (
+                              <Route
+                                key={route.path}
+                                path={route.path}
+                                element={
+                                  <Suspense fallback={<RouteLoadingFallback />}>
+                                    <Element />
+                                  </Suspense>
+                                }
+                              />
+                            );
+                          })}
+                        </Route>
+                        {/* Admin routes */}
+                        <Route
+                          element={
+                            <ProtectedRoute>
+                              <Suspense fallback={<RouteLoadingFallback />}>
+                                <AdminLayout />
+                              </Suspense>
+                            </ProtectedRoute>
+                          }
+                        >
+                          <Route path="/admin" element={<AdminDashboard />} />
+                          <Route path="/admin/users" element={<UserManagementPage />} />
+                          <Route path="/admin/users/:id" element={<UserDetailPage />} />
+                          <Route path="/admin/jobs" element={<JobManagementPage />} />
+                          <Route path="/admin/jobs/:id" element={<JobDetailPage />} />
+                          <Route path="/admin/connections" element={<ConnectionHealthPage />} />
+                        </Route>
+                        <Route path="*" element={<Navigate to="/home" replace />} />
+                      </Routes>
+                    </BrowserRouter>
+                  </ProductBrandProvider>
                 </SentryErrorBoundary>
                 <Toaster position="bottom-right" richColors closeButton />
               </TooltipProvider>

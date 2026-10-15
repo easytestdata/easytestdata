@@ -1,6 +1,6 @@
 {
   "name": "@easytestdata/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Realistic test data for QuickBooks Online sandboxes: the EasyTestData engine that generates financially coherent synthetic accounting data.",
   "license": "Apache-2.0",
   "engines": {

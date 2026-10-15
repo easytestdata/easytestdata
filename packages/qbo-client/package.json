@@ -1,6 +1,6 @@
 {
   "name": "@easytestdata/qbo-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Realistic test data for QuickBooks Online sandboxes: sandbox-only QBO API client that loads and purges EasyTestData plans.",
   "license": "Apache-2.0",
   "engines": {

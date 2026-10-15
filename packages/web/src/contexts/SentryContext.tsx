@@ -7,6 +7,7 @@ import React, {
   type ReactNode
 } from "react";
 import { useAppConfig } from "./AppConfigContext";
+import { scrubSentryBreadcrumb, scrubSentryEvent } from "../lib/sentry-scrub";
 
 type SentryModule = typeof import("@sentry/react");
 
@@ -51,7 +52,9 @@ export function SentryProvider({ children }: { children: ReactNode }) {
               queues: false,
               graphQL: { document: false, variables: false }
             },
-            replaysSessionSampleRate: 0
+            replaysSessionSampleRate: 0,
+            beforeSend: scrubSentryEvent,
+            beforeBreadcrumb: scrubSentryBreadcrumb
           });
           sentryModule = Sentry;
           setState({ initialized: true, Sentry });

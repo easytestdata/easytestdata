@@ -25,6 +25,31 @@ function checkStartupConfig() {
   }
   // Sentry (only when DSN is configured)
   if (process.env.SENTRY_DSN) {
+    // Header values can contain complete URLs, including OAuth and invite credentials.
+    // Sentry matches these snippets case-insensitively (also covering Content-Location, etc.).
+    const deniedHttpHeaders = [
+      "forwarded",
+      "-ip",
+      "remote-",
+      "via",
+      "-user",
+      "url",
+      "uri",
+      "referer",
+      "referrer",
+      "location",
+      "origin",
+      "link",
+      "refresh",
+      "content-security-policy",
+      "report-to",
+      "reporting-endpoints",
+      "sourcemap",
+      "destination",
+      "content-base",
+      "ping-from",
+      "ping-to"
+    ];
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
       environment: config.nodeEnv,
@@ -38,8 +63,8 @@ function checkStartupConfig() {
         userInfo: false,
         cookies: false,
         httpHeaders: {
-          request: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
-          response: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] }
+          request: { deny: deniedHttpHeaders },
+          response: { deny: deniedHttpHeaders }
         },
         httpBodies: [],
         urlQueryParams: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },

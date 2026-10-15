@@ -443,6 +443,21 @@ describe("bootstrap", () => {
     expect(calls.order).toEqual(["runner.stop", "closeDatabase", "lock.release"]);
   });
 
+  it("close() rejects with a lock release failure when no earlier step failed", async () => {
+    const { close } = await bootstrap({ listen: false });
+    const failure = new Error("release failed");
+    serverLock.release.mockImplementationOnce(async () => {
+      calls.order.push("lock.release");
+      throw failure;
+    });
+    calls.order = [];
+    const closing = close();
+    expect(close()).toBe(closing);
+    await expect(closing).rejects.toBe(failure);
+    await expect(close()).rejects.toBe(failure);
+    expect(calls.order).toEqual(["runner.stop", "closeDatabase", "lock.release"]);
+  });
+
   it("stops the runner and closes the database when the port is taken", async () => {
     const { createServer } = await import("node:net");
     const { config } = await import("../src/config.js");
@@ -764,6 +779,39 @@ describe("bootstrap", () => {
         ]);
       }
     );
+
+    it("keeps an onStop failure and logs a later lock release failure", async () => {
+      const { logger } = await import("../src/logger.js");
+      const { closeDatabase } = await import("../src/db/pool.js");
+      const ext = extension("demo-ext");
+      const failure = new Error("stop failed");
+      const releaseFailure = new Error("release failed");
+      ext.onStop.mockImplementationOnce(async () => {
+        calls.order.push("demo-ext.stop");
+        throw failure;
+      });
+      const { close } = await bootstrap({ listen: false, extensions: [ext] });
+      serverLock.release.mockImplementationOnce(async () => {
+        calls.order.push("lock.release");
+        throw releaseFailure;
+      });
+      logger.error.mockClear();
+      closeDatabase.mockClear();
+      calls.order = [];
+      const closing = close();
+      expect(close()).toBe(closing);
+      await expect(closing).rejects.toBe(failure);
+      await expect(close()).rejects.toBe(failure);
+      expect(logger.error).toHaveBeenCalledWith({ err: releaseFailure }, expect.any(String));
+      expect(closeDatabase).toHaveBeenCalledTimes(1);
+      expect(calls.order).toEqual([
+        "demo-ext.stopping",
+        "runner.stop",
+        "demo-ext.stop",
+        "closeDatabase",
+        "lock.release"
+      ]);
+    });
 
     it.each([false, true])(
       "cleans up only registered extensions after the second start fails (cleanup fails: %s)",

@@ -263,6 +263,7 @@ export async function bootstrap({
     const completion = Promise.withResolvers();
     closing = completion.promise; // hooks can trigger close() again
     (async () => {
+      let failed = false;
       try {
         await runEveryStep([
           // Signal cancellation before HTTP close waits for active responses to finish.
@@ -282,8 +283,19 @@ export async function bootstrap({
             logger.info("Database closed");
           }
         ]);
+      } catch (err) {
+        failed = true;
+        throw err;
       } finally {
-        await lock.release();
+        if (failed) {
+          try {
+            await lock.release();
+          } catch (releaseErr) {
+            logger.error({ err: releaseErr }, "Releasing the lock after a failed shutdown failed");
+          }
+        } else {
+          await lock.release();
+        }
       }
     })().then(completion.resolve, completion.reject);
     return closing;

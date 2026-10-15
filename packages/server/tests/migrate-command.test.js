@@ -32,7 +32,7 @@ vi.mock("../src/db/pool.js", () => {
   };
 });
 vi.mock("../src/logger.js", () => ({
-  logger: { info: vi.fn(), fatal: vi.fn() }
+  logger: { info: vi.fn(), error: vi.fn(), fatal: vi.fn() }
 }));
 
 const root = fs.mkdtempSync(join(tmpdir(), "eztd-migrate-command-"));
@@ -103,6 +103,29 @@ describe("runMigrationCommand", () => {
     calls.migrationError = new Error("migration failed");
     await expect(command.runMigrationCommand()).rejects.toBe(calls.migrationError);
     expect(calls.order).toEqual(["lock", "database", "closeDatabase", "lock.release"]);
+  });
+
+  it("keeps a migration failure and logs a later lock release failure", async () => {
+    const { logger } = await import("../src/logger.js");
+    calls.migrationError = new Error("migrate failed");
+    const releaseFailure = new Error("release failed");
+    lock.release.mockImplementationOnce(async () => {
+      calls.order.push("lock.release");
+      throw releaseFailure;
+    });
+    await expect(command.runMigrationCommand()).rejects.toBe(calls.migrationError);
+    expect(logger.error).toHaveBeenCalledWith({ err: releaseFailure }, expect.any(String));
+    expect(calls.order).toEqual(["lock", "database", "closeDatabase", "lock.release"]);
+  });
+
+  it("rejects with a lock release failure when migrations succeeded", async () => {
+    const failure = new Error("release failed");
+    lock.release.mockImplementationOnce(async () => {
+      calls.order.push("lock.release");
+      throw failure;
+    });
+    await expect(command.runMigrationCommand()).rejects.toBe(failure);
+    expect(calls.order.slice(-2)).toEqual(["closeDatabase", "lock.release"]);
   });
 
   it("does no database work or lock release when the local lock is already held", async () => {

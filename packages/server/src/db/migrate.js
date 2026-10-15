@@ -182,14 +182,26 @@ export async function runMigrations({ closePool = true, extensions = [] } = {}) 
 export async function runMigrationCommand({ extensions = [] } = {}) {
   validateExtensions(extensions);
   let lock = null;
+  let failed = false;
   try {
     if (config.deployment === "local") {
       fs.mkdirSync(config.dataDir, { recursive: true, mode: 0o700 });
       lock = lockDataDir(config.dataDir);
     }
     await runMigrations({ extensions });
+  } catch (err) {
+    failed = true;
+    throw err;
   } finally {
-    await lock?.release();
+    if (failed) {
+      try {
+        await lock?.release();
+      } catch (releaseErr) {
+        logger.error({ err: releaseErr }, "Releasing the lock after a failed migration failed");
+      }
+    } else {
+      await lock?.release();
+    }
   }
 }
 

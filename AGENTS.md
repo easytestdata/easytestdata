@@ -165,9 +165,9 @@ short-lived state lives in memory.
 
 **Backend** (`src/`):
 
-- `start.js` — `bootstrap()`: startup checks (exit on fatal), local secrets (local), the single-server lock, migrations, local identity (local), job runner, HTTP server; `close()` stops HTTP, then the runner, then the database, then releases the lock; every step runs even when an earlier one fails (the first error is rethrown), so the database is closed before the lock goes. One server per database: before migrating or recovering jobs, local mode creates `<dataDir>/server.lock` (0600, the pid, written to a temp file and hard-linked into place; `local/instance-lock.js`: a lock whose pid is gone is taken over by one starter at a time, which first creates the guard `server.lock.takeover` the same atomic way, re-checks the lock under it, then replaces it; a starter that finds the guard refuses, so of any number of starters racing for a stale lock exactly one wins and a live lock is never moved; one without a readable pid counts as held for 10 s; a directly run local `migrate` takes the same lock. Accepted residual: a starter killed inside the takeover leaves `server.lock.takeover`, and the next start that finds a stale lock refuses with "An earlier start was interrupted and left <file>. If EasyTestData is not running, delete that file and try again." (prefixed with "Another copy of EasyTestData may be starting with this data folder (pid N). Or an earlier start …" while the guard's pid is alive, which is also what a reused pid looks like). A pid file was kept over an OS lock because Node has no portable one without dependencies: `flock` is not exposed, abstract sockets are Linux-only, and a socket file on macOS goes stale like a pid file) and Cloud takes a session `pg_try_advisory_lock` on its own keep-alive connection (`lockDatabase()` / `SERVER_LOCK_KEY` in `db/pool.js`, distinct from migrate.js's `MIGRATION_LOCK_KEY`; if that connection errors or ends, the server runs `close()` and exits 1); a second server exits with "EasyTestData is already running with this data folder (pid N)…" / "Another EasyTestData server is already running against this database." and touches nothing. A startup failure after the lock stops what it started, closes the database (even if stopping the runner fails) and releases the lock (always, even if that cleanup throws; the startup error is rethrown); `close()` also releases it in a `finally`. `handleShutdownSignals`: the first SIGTERM/SIGINT closes cleanly, a second exits 1 at once.
+- `start.js` — `bootstrap({ extensions, webDistDir })`: startup checks (exit on fatal), local secrets (local), the single-server lock, migrations, local identity (local), extension starts, job runner, HTTP server; `close()` calls extension `onStopping` hooks, stops HTTP, then the runner, calls extension `onStop` hooks, closes the database, then releases the lock; every step runs even when an earlier one fails (the first error is rethrown), so the database is closed before the lock goes. One server per database: before migrating or recovering jobs, local mode creates `<dataDir>/server.lock` (0600, the pid, written to a temp file and hard-linked into place; `local/instance-lock.js`: a lock whose pid is gone is taken over by one starter at a time, which first creates the guard `server.lock.takeover` the same atomic way, re-checks the lock under it, then replaces it; a starter that finds the guard refuses, so of any number of starters racing for a stale lock exactly one wins and a live lock is never moved; one without a readable pid counts as held for 10 s; a directly run local `migrate` takes the same lock. Accepted residual: a starter killed inside the takeover leaves `server.lock.takeover`, and the next start that finds a stale lock refuses with "An earlier start was interrupted and left <file>. If EasyTestData is not running, delete that file and try again." (prefixed with "Another copy of EasyTestData may be starting with this data folder (pid N). Or an earlier start …" while the guard's pid is alive, which is also what a reused pid looks like). A pid file was kept over an OS lock because Node has no portable one without dependencies: `flock` is not exposed, abstract sockets are Linux-only, and a socket file on macOS goes stale like a pid file) and Cloud takes a session `pg_try_advisory_lock` on its own keep-alive connection (`lockDatabase()` / `SERVER_LOCK_KEY` in `db/pool.js`, distinct from migrate.js's `MIGRATION_LOCK_KEY`; if that connection errors or ends, the server runs `close()` and exits 1); a second server exits with "EasyTestData is already running with this data folder (pid N)…" / "Another EasyTestData server is already running against this database." and touches nothing. A startup failure after the lock stops what it started, closes the database (even if stopping the runner fails) and releases the lock (always, even if that cleanup throws; the startup error is rethrown); `close()` also releases it in a `finally`. `handleShutdownSignals`: the first SIGTERM/SIGINT closes cleanly, a second exits 1 at once.
 - `startup-checks.js` — refuses unsafe config: unknown `DEPLOYMENT`, implicit local with production signals, and (Cloud with `NODE_ENV=production`) missing `DATABASE_URL`/`JWT_SECRET`/`TOKEN_ENCRYPTION_KEY`/`APP_URL`; a default/short (<32) `JWT_SECRET` or non-hex `TOKEN_ENCRYPTION_KEY` is fatal there and, whenever set, in local mode. Warns about missing OAuth keys and a non-loopback `LOCAL_PUBLIC_URL`.
-- `server.js` — `createApp()`: local guards first (local), trust proxy, security headers (CSP in production, also local mode; `img-src` allows Google/GitHub avatar hosts), CORS + rate limiter + passport (Cloud only), request id, logging, `/health`, `/api/v1/config/public`, routes (`/auth`, `/connections`, `/jobs`, `/templates`; Cloud: `/teams`, `/admin`; local: `/setup`), then the SPA. Public `GET /health` runs `SELECT 1` and returns only `{status}` (200 `ok`, 503 `error`); the admin Overview (`GET /api/v1/admin/dashboard`) shows uptime, memory and jobs by status.
+- `server.js` — `createApp({ extensions, webDistDir })`: local guards first (local), trust proxy, security headers (CSP in production, also local mode; `img-src` allows Google/GitHub avatar hosts), CORS + rate limiter + passport (Cloud only), request id, logging, `/health`, `/api/v1/config/public`, routes (`/auth`, `/connections`, `/jobs`, `/templates`; Cloud: `/teams`, `/admin`; local: `/setup`), then the SPA. Public `GET /health` runs `SELECT 1` and returns only `{status}` (200 `ok`, 503 `error`); the admin Overview (`GET /api/v1/admin/dashboard`) shows uptime, memory and jobs by status.
 - `frontend.js` — serves the SPA (`/assets` immutable, other static files, then `index.html` for every non-`/api/` path). No marketing pages.
 - `local/guards.js` — `localRequestGuards`: 403 unless `Host` is `localhost:<port>`, `127.0.0.1:<port>` or the public URL's host (DNS rebinding); 403 on any forwarding header (`Forwarded`, `X-Forwarded-For`, `X-Forwarded-Host`, `X-Real-IP`); for non-GET/HEAD/OPTIONS, 403 on a foreign `Origin` and without `X-EasyTestData: 1` (a cross-site page cannot add it without a CORS preflight, which local mode never grants). No endpoint changes data on a GET except the Intuit OAuth callback, which checks its signed, browser-bound, single-use state; `GET /connections/authorize` allocates an in-memory OAuth state, so it gets the Origin and header checks too (`STATEFUL_GETS`, matched on the normalized path).
 - `local/secrets.js` (`ensureLocalSecrets`: data dir 0700, `secret.key` 0600 written atomically, JWT secret derived from it; a damaged key is refused, never replaced), `local/identity.js` (`ensureLocalIdentity` / `getLocalIdentity`: the one local user and team), `local/start-local.js` (`startLocalServer`, used by the CLI).
@@ -187,6 +187,86 @@ short-lived state lives in memory.
 - `auth/passport-setup.js` — Google, GitHub and Intuit OAuth strategies (the only sign-in methods; Cloud only)
 - `auth/passport-intuit-sso.js` — Custom Intuit OpenID Connect strategy with sandbox/production userinfo URL support. When userinfo fails it falls back to the id_token of that request's token exchange (passed through passport-oauth2's verify `params`); nothing about a login is stored on the shared strategy instance.
 - `config.js` — central config (`deployment`, `port`, `host`, `dataDir`, `appUrl`, `marketingUrl`, `jobs`, `rateLimit`, `adminEmails`); `config.limits` holds the per-deployment limits
+
+## Server extension contract
+
+`@easytestdata/server` exports `createApp({ extensions = [], webDistDir } = {})`.
+`@easytestdata/server/start` exports `bootstrap`, `handleShutdownSignals`, `runMigrations` and
+`runMigrationCommand`. Importing `/start` or `/extension` never listens, migrates or opens the
+database. These are JavaScript entry points with no declaration-file promise; the shared-package
+`.d.ts` rules do not apply. Existing zero-argument calls remain valid.
+
+`@easytestdata/server/extension` has exactly these named exports, each the same binding used by
+the internal server modules (one config, logger, database adapter and connection-lock map per process):
+
+| Source                         | Exports                                                                |
+| ------------------------------ | ---------------------------------------------------------------------- |
+| `db/pool.js`                   | `query`, `transaction`, `rollback`                                     |
+| `crypto/tokens.js`             | `encryptTokenPair`, `decryptTokenPair`, `encryptValue`, `decryptValue` |
+| `auth/oauth-state.js`          | `beginOAuthState`, `consumeOAuthState`, `OAuthStateError`              |
+| `middleware/auth.js`           | `authenticate`, `requireRole`, `requireTeamManager`                    |
+| `services/connection-lock.js`  | `withConnectionLock`, `ConnectionLockBusyError`                        |
+| `services/connection-guard.js` | `lockTeam`                                                             |
+| `errors.js`                    | `AppError`                                                             |
+| `logger.js`                    | `logger`                                                               |
+| `config.js`                    | `config`                                                               |
+
+Keep this key set exact. Do not expose `QboClient`, `buildLockedQboClient` or a general raw company
+HTTP helper. Extensions use the existing transaction client and row-lock order described below.
+`withConnectionLock(connectionId, fn)` shares the server's in-process lock and fails immediately
+with `ConnectionLockBusyError` when busy; it does not wait or queue. It releases in `finally`,
+including when `fn` throws. Callers choose how to handle contention (for example, HTTP 409).
+
+Each descriptor is a plain object with a required unique `name` matching
+`/^[a-z][a-z0-9-]{1,30}$/`. Reserved names are `auth`, `connections`, `jobs`, `templates`, `teams`,
+`admin`, `setup`, `config` and `health`. Optional fields:
+
+- `router`: an Express router mounted at `/api/v1/<name>`.
+- `migrationsDir`: a non-empty directory path; prefer an absolute path owned by the extension.
+- `onStart({ config, logger })`: awaited during startup in descriptor order.
+- `onStopping({ config, logger })`: signals cancellation and refuses new extension work before HTTP
+  drain; it must not await operation drain.
+- `onStop({ config, logger })`: awaits operation drain and persistence before database closure.
+
+Descriptors are validated before startup side effects. Routers mount in descriptor order after
+the built-in API routes and before the SPA and error handler, behind the existing global middleware
+(including local guards, JSON parsing, request IDs and Cloud rate limits). Router authentication is
+explicit: mount `authenticate` and any required role/tenant checks on the extension router itself;
+mounting an extension does not authenticate it. `webDistDir`, when supplied to `createApp` or
+`bootstrap`, must be an absolute path; otherwise the workspace-then-packed web lookup is preserved.
+
+`bootstrap({ listen = true, exit = ..., extensions = [], webDistDir } = {})` preserves startup
+checks, local secrets and the single-server lock, then runs core and extension migrations with
+`closePool: false`, local identity, the credentials warning, extension starts, the job runner,
+`createApp({ extensions, webDistDir })` and HTTP listen. Each descriptor is registered as startup
+traverses it; an `onStart` descriptor is registered only after that hook resolves. Hookless
+descriptors are registered too. An `onStart` that throws must clean up its own partial resources.
+
+Normal `close()` ordering is registered `onStopping` hooks in reverse order → HTTP close → runner
+stop → registered `onStop` hooks in reverse order → database close → lock release in `finally`.
+Failed startup ordering is registered `onStopping` hooks in reverse order → runner stop → HTTP
+close → registered `onStop` hooks in reverse order → database close → lock release. Each hook is
+its own cleanup step: a failure cannot skip siblings or later cleanup. The original startup error
+wins on a failed start; normal shutdown rethrows its first cleanup error and logs later ones.
+`close()` is idempotent, sharing its promise, with each registered hook invoked at most once per
+shutdown. Shutdown hooks receive the same `{ config, logger }` as startup hooks.
+
+`runMigrationCommand({ extensions = [] } = {})` is the migration-only entry point for consumers;
+the direct migrate CLI uses it too. It validates descriptors, takes the existing local data-folder
+lock before opening PGlite, calls `runMigrations({ extensions })` and always releases the local lock.
+It refuses a held local lock without database work. Cloud keeps the migration advisory lock without
+taking the running-server lock. It starts no HTTP server, job runner or extension lifecycle hooks.
+The lower-level `runMigrations({ closePool = true, extensions = [] } = {})` closes the database by
+default; the bootstrap path keeps it open.
+
+Core migrations run first, then extension directories in descriptor order. Each directory uses
+contiguous, unique numeric prefixes and filenames matching `/^\d{3}_[a-z0-9_]+\.sql$/`; files apply
+lexically, each atomically with its tracking row. Core owns `_migrations`; an extension owns
+`_migrations_<name with hyphens replaced by underscores>`. Missing files for recorded migrations
+are refused. Applied files are immutable: add a new migration, never rename, remove or edit an
+applied one (tracking records names, not content hashes). Do not alter core tables, job types or
+sandbox assertions to add an extension. Keep the contract tests and packed-install import check
+in step with any intentional API change.
 
 ## Key Patterns
 

@@ -16,6 +16,8 @@ import { lockDataDir } from "./local/instance-lock.js";
 import { getQboCredentials } from "./services/app-settings.js";
 import { scrubSentryEvent } from "./http/setup.js";
 
+export { runMigrations, runMigrationCommand } from "./db/migrate.js";
+
 /** Refuses unsafe configuration (exits) and sets up optional integrations before anything runs. */
 function checkStartupConfig() {
   const { fatal, warnings } = collectStartupProblems(process.env);

@@ -176,25 +176,30 @@ export async function runMigrations({ closePool = true, extensions = [] } = {}) 
 }
 
 /**
- * `pnpm run migrate`. Local mode takes the data dir's server lock first, so it never opens PGlite
+ * Local mode takes the data dir's server lock first, so it never opens PGlite
  * while the app (or another migrate) has it open.
  */
-async function main() {
+export async function runMigrationCommand({ extensions = [] } = {}) {
+  validateExtensions(extensions);
   let lock = null;
-  let failed = false;
   try {
     if (config.deployment === "local") {
       fs.mkdirSync(config.dataDir, { recursive: true, mode: 0o700 });
       lock = lockDataDir(config.dataDir);
     }
-    await runMigrations();
-  } catch (err) {
-    logger.fatal({ err }, "Migration failed");
-    failed = true;
+    await runMigrations({ extensions });
   } finally {
     await lock?.release();
   }
-  if (failed) process.exit(1);
+}
+
+async function main() {
+  try {
+    await runMigrationCommand();
+  } catch (err) {
+    logger.fatal({ err }, "Migration failed");
+    process.exit(1);
+  }
 }
 
 const entryUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";

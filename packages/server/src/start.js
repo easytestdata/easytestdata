@@ -3,6 +3,7 @@ import { pathToFileURL } from "url";
 import * as Sentry from "@sentry/node";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
+import { validateExtensions } from "./extensions.js";
 import { collectStartupProblems } from "./startup-checks.js";
 import { runMigrations } from "./db/migrate.js";
 import { closeDatabase, lockDatabase } from "./db/pool.js";
@@ -149,16 +150,23 @@ const closeServer = (server) => new Promise((resolve) => server.close(() => reso
 
 /**
  * Starts the server: (local mode: data dir and secrets), the single-server lock, migrations,
- * (local mode: the built-in user and team), then the job runner (which first closes out jobs a
- * previous process left running), then the HTTP server, on 127.0.0.1 only in local mode.
- * Resolves { server, close }; close() stops accepting connections, stops the runner (running
- * jobs are drained, then aborted and awaited), closes the database (even if stopping the runner
- * failed; the first error is rethrown) and only then releases the single-server lock. A startup that fails after taking the lock stops whatever it started,
+ * (local mode: the built-in user and team), extension starts, then the job runner (which first
+ * closes out jobs a previous process left running), then HTTP, on 127.0.0.1 only in local mode.
+ * Resolves { server, close }; close() signals extensions, closes HTTP, stops the runner (running
+ * jobs are drained, then aborted and awaited), stops extensions, closes the database (even if an
+ * earlier step failed; the first error is rethrown) and only then releases the single-server lock.
+ * A startup that fails after taking the lock stops whatever it started,
  * closes the database and releases the lock. Cloud: if the lock's connection is lost, another
  * server could start, so this one shuts down: close(), then exit(1) (during startup, the startup
  * fails instead).
  */
-export async function bootstrap({ listen = true, exit = (code) => process.exit(code) } = {}) {
+export async function bootstrap({
+  listen = true,
+  exit = (code) => process.exit(code),
+  extensions = [],
+  webDistDir
+} = {}) {
+  validateExtensions(extensions);
   checkStartupConfig();
   const local = config.deployment === "local";
   if (local) applyLocalSecrets(); // creates the data dir the local lock lives in
@@ -179,12 +187,23 @@ export async function bootstrap({ listen = true, exit = (code) => process.exit(c
   });
   let runner = null;
   let server;
+  const registeredExtensions = [];
+  const extensionSteps = (hook) =>
+    [...registeredExtensions]
+      .reverse()
+      .filter((extension) => extension[hook])
+      .map((extension) => () => extension[hook]({ config, logger }));
   try {
-    await runMigrations({ closePool: false });
+    await runMigrations({ closePool: false, extensions });
     if (local) await ensureLocalIdentity();
     await warnIfQboNotConfigured(local);
     // A lost lock means another server may already run: never recover its jobs or start ours.
     if (lockLost) throw lockLost;
+    for (const extension of extensions) {
+      if (extension.onStart) await extension.onStart({ config, logger });
+      registeredExtensions.push(extension);
+      if (lockLost) throw lockLost;
+    }
     runner = await startJobRunner();
 
     // ADMIN_EMAILS: make matching existing users admins (Cloud only; local mode has no admins).
@@ -194,7 +213,7 @@ export async function bootstrap({ listen = true, exit = (code) => process.exit(c
       );
     }
 
-    server = createServer(createApp());
+    server = createServer(createApp({ extensions, webDistDir }));
     if (lockLost) throw lockLost;
     if (listen) {
       await new Promise((resolve, reject) => {
@@ -214,27 +233,38 @@ export async function bootstrap({ listen = true, exit = (code) => process.exit(c
     // cleanup step fails.
     try {
       await runEveryStep([
+        ...extensionSteps("onStopping"),
         async () => {
           if (runner) await runner.stop();
         },
         async () => {
           if (server?.listening) await closeServer(server);
         },
+        ...extensionSteps("onStop"),
         () => closeDatabase()
       ]);
     } catch (cleanupErr) {
       logger.error({ err: cleanupErr }, "Cleanup after a failed start failed");
     } finally {
-      await lock.release();
+      try {
+        await lock.release();
+      } catch (releaseErr) {
+        logger.error({ err: releaseErr }, "Releasing the lock after a failed start failed");
+      }
     }
     throw err;
   }
 
   let closing = null;
   close = () => {
-    closing ??= (async () => {
+    if (closing) return closing;
+    const completion = Promise.withResolvers();
+    closing = completion.promise; // hooks can trigger close() again
+    (async () => {
       try {
         await runEveryStep([
+          // Signal cancellation before HTTP close waits for active responses to finish.
+          ...extensionSteps("onStopping"),
           async () => {
             if (!server.listening) return;
             await closeServer(server);
@@ -244,6 +274,7 @@ export async function bootstrap({ listen = true, exit = (code) => process.exit(c
             await runner.stop();
             logger.info("Job runner stopped");
           },
+          ...extensionSteps("onStop"),
           async () => {
             await closeDatabase();
             logger.info("Database closed");
@@ -252,7 +283,7 @@ export async function bootstrap({ listen = true, exit = (code) => process.exit(c
       } finally {
         await lock.release();
       }
-    })();
+    })().then(completion.resolve, completion.reject);
     return closing;
   };
 

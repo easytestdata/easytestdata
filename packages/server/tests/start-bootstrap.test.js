@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { get } from "node:http";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls = vi.hoisted(() => ({
   order: [],
@@ -540,6 +541,354 @@ describe("bootstrap", () => {
     calls.migrate = new Error("migration failed");
     await expect(bootstrap({ listen: false })).rejects.toThrow("migration failed");
     expect(calls.order).toEqual(["lock", "migrate:false", "closeDatabase", "lock.release"]);
+  });
+
+  describe("extension lifecycle", () => {
+    let config;
+    let saved;
+
+    beforeEach(async () => {
+      ({ config } = await import("../src/config.js"));
+      saved = { deployment: config.deployment, port: config.port, host: config.host };
+      Object.assign(config, { port: 0, host: "127.0.0.1" });
+      vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+      Object.assign(config, saved);
+      vi.restoreAllMocks();
+      vi.unstubAllEnvs();
+    });
+
+    function extension(name) {
+      return {
+        name,
+        onStart: vi.fn(async () => calls.order.push(`${name}.start`)),
+        onStopping: vi.fn(async () => calls.order.push(`${name}.stopping`)),
+        onStop: vi.fn(async () => calls.order.push(`${name}.stop`))
+      };
+    }
+
+    it.each([
+      [null, "Extensions must be an array"],
+      [[{ name: "first-ext" }, { name: "second-ext", onStop: true }], "must be a function"]
+    ])("rejects invalid descriptors before startup side effects: %j", async (extensions, error) => {
+      const { ensureLocalSecrets } = await import("../src/local/secrets.js");
+      config.deployment = "local";
+      await expect(bootstrap({ listen: false, extensions })).rejects.toThrow(error);
+      expect(calls.order).toEqual([]);
+      expect(ensureLocalSecrets).not.toHaveBeenCalled();
+    });
+
+    it("forwards descriptors and webDistDir, awaiting starts after local setup and before the runner", async () => {
+      const { runMigrations } = await import("../src/db/migrate.js");
+      const { createApp } = await import("../src/server.js");
+      const { ensureLocalIdentity } = await import("../src/local/identity.js");
+      const { logger } = await import("../src/logger.js");
+      config.deployment = "local";
+      vi.stubEnv("QBO_CLIENT_ID", "");
+      vi.stubEnv("QBO_CLIENT_SECRET", "");
+      ensureLocalIdentity.mockImplementationOnce(async () => calls.order.push("identity"));
+      logger.warn.mockImplementationOnce(() => calls.order.push("target.warning"));
+      const first = extension("first-ext");
+      first.onStart.mockImplementationOnce(async () => {
+        calls.order.push("first-ext.start");
+        await Promise.resolve();
+        calls.order.push("first-ext.ready");
+      });
+      const second = extension("second-ext");
+      const extensions = [first, { name: "hookless-ext" }, second];
+      const webDistDir = "/tmp/eztd-extension-web";
+      const { close } = await bootstrap({ listen: false, extensions, webDistDir });
+      expect(runMigrations).toHaveBeenCalledWith({ closePool: false, extensions });
+      expect(createApp).toHaveBeenCalledWith({ extensions, webDistDir });
+      expect(calls.order).toEqual([
+        "lock",
+        "migrate:false",
+        "identity",
+        "target.warning",
+        "first-ext.start",
+        "first-ext.ready",
+        "second-ext.start",
+        "runner.start",
+        "createApp"
+      ]);
+      for (const ext of [first, second]) {
+        expect(ext.onStart).toHaveBeenCalledExactlyOnceWith({ config, logger });
+      }
+      await close();
+    });
+
+    it("stops registered descriptors in reverse order, including ones without onStart, only once", async () => {
+      const { logger } = await import("../src/logger.js");
+      const first = extension("first-ext");
+      const second = extension("second-ext");
+      delete second.onStart;
+      const extensions = [first, second, { name: "hookless-ext" }];
+      const { server, close } = await bootstrap({ extensions });
+      const originalClose = server.close.bind(server);
+      vi.spyOn(server, "close").mockImplementation((callback) => {
+        calls.order.push("server.close");
+        return originalClose(callback);
+      });
+      calls.order = [];
+      const closing = close();
+      expect(close()).toBe(closing);
+      await closing;
+      await close();
+      expect(calls.order).toEqual([
+        "second-ext.stopping",
+        "first-ext.stopping",
+        "server.close",
+        "runner.stop",
+        "second-ext.stop",
+        "first-ext.stop",
+        "closeDatabase",
+        "lock.release"
+      ]);
+      for (const ext of [first, second]) {
+        expect(ext.onStopping).toHaveBeenCalledExactlyOnceWith({ config, logger });
+        expect(ext.onStop).toHaveBeenCalledExactlyOnceWith({ config, logger });
+      }
+    });
+
+    it("signals an active response before HTTP close, then waits for response and extension drain", async () => {
+      const { createApp } = await import("../src/server.js");
+      const started = Promise.withResolvers();
+      const drain = Promise.withResolvers();
+      const cancel = new AbortController();
+      let response;
+      createApp.mockReturnValueOnce((_req, res) => {
+        response = res;
+        started.resolve();
+      });
+      const ext = extension("demo-ext");
+      ext.onStopping.mockImplementationOnce(() => {
+        calls.order.push("demo-ext.stopping");
+        cancel.abort();
+      });
+      ext.onStop.mockImplementationOnce(async () => {
+        calls.order.push("demo-ext.stop");
+        await drain.promise;
+      });
+      const { server, close } = await bootstrap({ extensions: [ext] });
+      const originalClose = server.close.bind(server);
+      const httpClose = vi.spyOn(server, "close").mockImplementation((callback) => {
+        calls.order.push("server.close");
+        return originalClose(callback);
+      });
+      const request = new Promise((resolve, reject) => {
+        get(`http://127.0.0.1:${server.address().port}/`, { agent: false }, (res) => {
+          res.resume();
+          res.on("end", resolve);
+        }).on("error", reject);
+      });
+      try {
+        await started.promise;
+        calls.order = [];
+        const closing = close();
+        await vi.waitFor(() => expect(httpClose).toHaveBeenCalledTimes(1));
+        expect(cancel.signal.aborted).toBe(true);
+        expect(calls.order).toEqual(["demo-ext.stopping", "server.close"]);
+        response.end("cancelled");
+        await request;
+        await vi.waitFor(() => expect(ext.onStop).toHaveBeenCalledTimes(1));
+        expect(calls.order).toEqual([
+          "demo-ext.stopping",
+          "server.close",
+          "runner.stop",
+          "demo-ext.stop"
+        ]);
+        drain.resolve();
+        await closing;
+        expect(calls.order.slice(-2)).toEqual(["closeDatabase", "lock.release"]);
+      } finally {
+        response?.end();
+        drain.resolve();
+        await close();
+        await request;
+      }
+    });
+
+    it("shares the closing promise when onStopping itself triggers another close", async () => {
+      const ext = extension("demo-ext");
+      const { close } = await bootstrap({ listen: false, extensions: [ext] });
+      let reentrantClose;
+      ext.onStopping.mockImplementationOnce(() => {
+        calls.order.push("demo-ext.stopping");
+        reentrantClose = close();
+      });
+      calls.order = [];
+      const closing = close();
+      await closing;
+      await reentrantClose;
+      expect(reentrantClose).toBe(closing);
+      expect(calls.order).toEqual([
+        "demo-ext.stopping",
+        "runner.stop",
+        "demo-ext.stop",
+        "closeDatabase",
+        "lock.release"
+      ]);
+    });
+
+    it.each(["onStopping", "onStop"])(
+      "still runs sibling hooks and all cleanup when the first reverse-order %s fails",
+      async (hook) => {
+        const first = extension("first-ext");
+        const second = extension("second-ext");
+        const failure = new Error(`${hook} failed`);
+        second[hook].mockImplementationOnce(async () => {
+          calls.order.push(hook === "onStopping" ? "second-ext.stopping" : "second-ext.stop");
+          throw failure;
+        });
+        const { server, close } = await bootstrap({ extensions: [first, second] });
+        const originalClose = server.close.bind(server);
+        vi.spyOn(server, "close").mockImplementation((callback) => {
+          calls.order.push("server.close");
+          return originalClose(callback);
+        });
+        calls.order = [];
+        calls.closeDbError = new Error("database close failed too");
+        await expect(close()).rejects.toBe(failure);
+        await expect(close()).rejects.toBe(failure);
+        expect(calls.order).toEqual([
+          "second-ext.stopping",
+          "first-ext.stopping",
+          "server.close",
+          "runner.stop",
+          "second-ext.stop",
+          "first-ext.stop",
+          "closeDatabase",
+          "lock.release"
+        ]);
+      }
+    );
+
+    it.each([false, true])(
+      "cleans up only registered extensions after the second start fails (cleanup fails: %s)",
+      async (cleanupFails) => {
+        const first = extension("first-ext");
+        const withoutStart = extension("without-start");
+        delete withoutStart.onStart;
+        const second = extension("second-ext");
+        const unvisited = extension("unvisited-ext");
+        delete unvisited.onStart;
+        const failure = new Error("second start failed");
+        second.onStart.mockImplementationOnce(async () => {
+          calls.order.push("second-ext.start");
+          calls.order.push("second-ext.self-cleanup");
+          throw failure;
+        });
+        if (cleanupFails) {
+          first.onStopping.mockImplementationOnce(async () => {
+            calls.order.push("first-ext.stopping");
+            throw new Error("stopping failed");
+          });
+          first.onStop.mockImplementationOnce(async () => {
+            calls.order.push("first-ext.stop");
+            throw new Error("stop failed");
+          });
+          calls.closeDbError = new Error("database close failed");
+          serverLock.release.mockImplementationOnce(async () => {
+            calls.order.push("lock.release");
+            throw new Error("release failed");
+          });
+        }
+        await expect(
+          bootstrap({ listen: false, extensions: [first, withoutStart, second, unvisited] })
+        ).rejects.toBe(failure);
+        expect(calls.order).toEqual([
+          "lock",
+          "migrate:false",
+          "first-ext.start",
+          "second-ext.start",
+          "second-ext.self-cleanup",
+          "without-start.stopping",
+          "first-ext.stopping",
+          "without-start.stop",
+          "first-ext.stop",
+          "closeDatabase",
+          "lock.release"
+        ]);
+        for (const ext of [second, unvisited]) {
+          expect(ext.onStopping).not.toHaveBeenCalled();
+          expect(ext.onStop).not.toHaveBeenCalled();
+        }
+      }
+    );
+
+    it("keeps runner-before-HTTP cleanup after a failure with a listening server", async () => {
+      const { logger } = await import("../src/logger.js");
+      const { Server } = await import("node:http");
+      const originalClose = Server.prototype.close;
+      vi.spyOn(Server.prototype, "close").mockImplementation(function (callback) {
+        calls.order.push("server.close");
+        return originalClose.call(this, callback);
+      });
+      const failure = new Error("lock lost after listen");
+      logger.info.mockImplementationOnce(() => calls.onLost(failure));
+      calls.runnerStopError = new Error("runner drain failed");
+      const ext = extension("demo-ext");
+      await expect(bootstrap({ extensions: [ext] })).rejects.toBe(failure);
+      expect(calls.order.slice(-6)).toEqual([
+        "demo-ext.stopping",
+        "runner.stop",
+        "server.close",
+        "demo-ext.stop",
+        "closeDatabase",
+        "lock.release"
+      ]);
+    });
+
+    it("stops starting work after lock loss during an awaited onStart, cleaning up that extension", async () => {
+      const first = extension("first-ext");
+      const second = extension("second-ext");
+      const finish = Promise.withResolvers();
+      first.onStart.mockImplementationOnce(async () => {
+        calls.order.push("first-ext.start");
+        await finish.promise;
+      });
+      const exit = vi.fn();
+      const failure = new Error("lock lost during start");
+      const starting = bootstrap({ listen: false, exit, extensions: [first, second] }).catch(
+        (err) => err
+      );
+      try {
+        await vi.waitFor(() => expect(first.onStart).toHaveBeenCalledTimes(1));
+        calls.onLost(failure);
+      } finally {
+        finish.resolve();
+      }
+      expect(await starting).toBe(failure);
+      expect(calls.order).toEqual([
+        "lock",
+        "migrate:false",
+        "first-ext.start",
+        "first-ext.stopping",
+        "first-ext.stop",
+        "closeDatabase",
+        "lock.release"
+      ]);
+      expect(second.onStart).not.toHaveBeenCalled();
+      expect(exit).not.toHaveBeenCalled();
+    });
+
+    it("runs extension cleanup on runtime lock loss", async () => {
+      const exit = vi.fn();
+      const ext = extension("demo-ext");
+      await bootstrap({ listen: false, exit, extensions: [ext] });
+      calls.order = [];
+      calls.onLost(new Error("connection terminated"));
+      await vi.waitFor(() => expect(exit).toHaveBeenCalledExactlyOnceWith(1));
+      expect(calls.order).toEqual([
+        "demo-ext.stopping",
+        "runner.stop",
+        "demo-ext.stop",
+        "closeDatabase",
+        "lock.release"
+      ]);
+    });
   });
 });
 

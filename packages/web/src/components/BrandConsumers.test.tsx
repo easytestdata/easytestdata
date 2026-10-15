@@ -104,12 +104,28 @@ describe.each([false, true])("brand consumers (source reads: %s)", (sourceReads)
     if (sourceReads) Object.assign(brand, sourceBrand);
   });
 
+  it("renders the brand logo beside the name within the mobile header", () => {
+    renderBrand(<Layout />);
+    const mobileHeader = screen
+      .getByRole("button", { name: "Open navigation menu" })
+      .closest("header")!;
+    expect(mobileHeader).toHaveClass("lg:hidden");
+    expect(within(mobileHeader).getByText(brand.name)).toBeInTheDocument();
+    if (sourceReads) {
+      expect(within(mobileHeader).getByLabelText("Pro logo")).toBeInTheDocument();
+    } else {
+      expect(mobileHeader.querySelector('svg[viewBox="0 0 40 40"]')).toBeInTheDocument();
+    }
+  });
+
   it("renders desktop and mobile navigation with the right name, links and badges", () => {
     const { container } = renderBrand(<Layout />);
     expect(container.querySelectorAll("header")[0]).toHaveTextContent(brand.name);
     expect(container.querySelectorAll("header")[1]).toHaveTextContent(brand.name);
     if (sourceReads) {
-      expect(screen.getByLabelText("Pro logo")).toBeInTheDocument();
+      expect(
+        within(container.querySelectorAll("header")[0]!).getByLabelText("Pro logo")
+      ).toBeInTheDocument();
       expect(screen.queryByText("Sandbox only")).not.toBeInTheDocument();
       expect(screen.queryByRole("link", { name: "Open source" })).not.toBeInTheDocument();
       const companion = screen.getByRole("link", { name: sourceBrand.companionLabel });

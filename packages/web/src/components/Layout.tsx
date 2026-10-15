@@ -280,7 +280,10 @@ export function Layout() {
             </div>
           </SheetContent>
         </Sheet>
-        <span className="text-lg font-bold">{name}</span>
+        <div className="flex items-center gap-2">
+          <BrandLogo className="h-6 w-6" />
+          <span className="text-lg font-bold">{name}</span>
+        </div>
         <div className="ml-auto">{!supportsSourceReads && <SandboxBadge />}</div>
       </header>
 

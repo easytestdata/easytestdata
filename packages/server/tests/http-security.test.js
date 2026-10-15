@@ -194,6 +194,41 @@ describe("request logging never records credentials", () => {
     expect(stripQuery("/invite?token=abc")).toBe("/invite?[redacted]");
     expect(stripQuery("/home")).toBe("/home");
   });
+
+  it("scrubs URL attributes, header arrays and breadcrumbs without mutating the input", () => {
+    const data = {
+      "http.request.header.Referer": ["https://app.example/invite?token=secret", "/invite#secret"],
+      "http.response.header.Location": "/login?auth_code=secret",
+      "custom.url": ["/callback?code=secret", "/callback#secret"],
+      "custom.QUERY": ["state=secret", "token=secret"],
+      "url.fragment": "secret",
+      "custom.FRAGMENT": ["secret"],
+      "http.target": "/callback?state=secret",
+      "http.status_code": 302
+    };
+    const original = {
+      request: {
+        url: "/callback#secret",
+        headers: { Referer: ["/invite?token=secret"], Location: "/login?auth_code=secret" }
+      },
+      contexts: { trace: { data } },
+      spans: [{ description: "GET /callback#secret", data }],
+      breadcrumbs: [{ category: "http", data: { url: "/callback?code=secret", status_code: 200 } }]
+    };
+    const before = JSON.stringify(original);
+    const event = scrubSentryEvent(original);
+    expect(JSON.stringify(event)).not.toContain("secret");
+    expect(event.contexts.trace.data).toEqual({
+      "http.request.header.Referer": ["https://app.example/invite?[redacted]", "/invite"],
+      "http.response.header.Location": "/login?[redacted]",
+      "custom.url": ["/callback?[redacted]", "/callback"],
+      "http.target": "/callback?[redacted]",
+      "http.status_code": 302
+    });
+    expect(event.spans[0].data).toEqual(event.contexts.trace.data);
+    expect(event.breadcrumbs[0].data).toEqual({ url: "/callback?[redacted]", status_code: 200 });
+    expect(JSON.stringify(original)).toBe(before);
+  });
 });
 
 describe("X-Request-Id handling", () => {

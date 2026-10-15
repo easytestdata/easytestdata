@@ -25,10 +25,54 @@ function checkStartupConfig() {
   }
   // Sentry (only when DSN is configured)
   if (process.env.SENTRY_DSN) {
+    // Header values can contain complete URLs, including OAuth and invite credentials.
+    // Sentry matches these snippets case-insensitively (also covering Content-Location, etc.).
+    const deniedHttpHeaders = [
+      "forwarded",
+      "-ip",
+      "remote-",
+      "via",
+      "-user",
+      "url",
+      "uri",
+      "referer",
+      "referrer",
+      "location",
+      "origin",
+      "link",
+      "refresh",
+      "content-security-policy",
+      "report-to",
+      "reporting-endpoints",
+      "sourcemap",
+      "destination",
+      "content-base",
+      "ping-from",
+      "ping-to"
+    ];
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
       environment: config.nodeEnv,
       tracesSampleRate: config.nodeEnv === "production" ? 0.1 : 1.0,
+      // v11 streams spans by default, bypassing beforeSendTransaction. Keep our URL scrubber.
+      traceLifecycle: "static",
+      // Our error handler owns 5xx reporting and adds sanitized request context.
+      integrations: [Sentry.expressIntegration({ shouldHandleError: false })],
+      // Preserve v10's collection defaults; v11 otherwise collects bodies, cookies and DB data.
+      dataCollection: {
+        userInfo: false,
+        cookies: false,
+        httpHeaders: {
+          request: { deny: deniedHttpHeaders },
+          response: { deny: deniedHttpHeaders }
+        },
+        httpBodies: [],
+        urlQueryParams: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+        genAI: { inputs: false, outputs: false },
+        databaseQueryData: false,
+        queues: false,
+        graphQL: { document: false, variables: false }
+      },
       beforeSend: scrubSentryEvent,
       beforeSendTransaction: scrubSentryEvent
     });

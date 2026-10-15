@@ -6,9 +6,11 @@ const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,64}$/;
 /**
  * Drops the query string from a URL before it is logged or reported. Query strings carry
  * one-time credentials (?auth_code=, invite tokens, OAuth codes/state).
+ * Sentry also strips fragments; log callers keep their existing format.
  */
-export function stripQuery(url) {
+export function stripQuery(url, stripFragment = false) {
   if (typeof url !== "string") return url;
+  if (stripFragment) url = url.split("#", 1)[0];
   const idx = url.indexOf("?");
   return idx === -1 ? url : `${url.slice(0, idx)}?[redacted]`;
 }
@@ -19,17 +21,18 @@ function loggableHeaders(headers) {
   return { ...headers, referer: stripQuery(headers.referer) };
 }
 
-// Span/trace data keys that hold a URL (query stripped) or a bare query (dropped).
-const SPAN_URL_KEYS = ["url", "url.full", "http.url", "http.target"];
-const SPAN_QUERY_KEYS = ["url.query", "http.query"];
-
 function scrubSpanData(data) {
   if (!data || typeof data !== "object") return data;
   const scrubbed = { ...data };
-  for (const key of SPAN_URL_KEYS) {
-    if (typeof scrubbed[key] === "string") scrubbed[key] = stripQuery(scrubbed[key]);
+  for (const [key, value] of Object.entries(scrubbed)) {
+    // Bare query/fragment attributes have no delimiter to strip, so drop their contents.
+    if (/query|fragment/i.test(key)) delete scrubbed[key];
+    else if (/url|referr?er|location/i.test(key) || key === "http.target") {
+      scrubbed[key] = Array.isArray(value)
+        ? value.map((item) => stripQuery(item, true))
+        : stripQuery(value, true);
+    }
   }
-  for (const key of SPAN_QUERY_KEYS) delete scrubbed[key];
   return scrubbed;
 }
 
@@ -38,7 +41,7 @@ function scrubSpan(span) {
   const scrubbed = { ...span };
   // An HTTP span's description is "GET <url>".
   if (typeof scrubbed.description === "string") {
-    scrubbed.description = stripQuery(scrubbed.description);
+    scrubbed.description = stripQuery(scrubbed.description, true);
   }
   if (scrubbed.data) scrubbed.data = scrubSpanData(scrubbed.data);
   return scrubbed;
@@ -47,17 +50,22 @@ function scrubSpan(span) {
 /**
  * Sentry `beforeSend` and `beforeSendTransaction`: an event carries the request URL, its query
  * string and headers (the Referer included), and a transaction also its spans' and trace's URLs;
- * none of them may carry the query's credentials.
+ * its HTTP breadcrumbs also carry URLs. None may carry query or fragment credentials.
  */
 export function scrubSentryEvent(event) {
   if (!event || typeof event !== "object") return event;
   const scrubbed = { ...event };
   const req = event.request;
   if (req) {
-    scrubbed.request = { ...req, url: stripQuery(req.url), headers: loggableHeaders(req.headers) };
+    scrubbed.request = {
+      ...req,
+      url: stripQuery(req.url, true),
+      headers: scrubSpanData(req.headers)
+    };
     delete scrubbed.request.query_string;
   }
   if (Array.isArray(event.spans)) scrubbed.spans = event.spans.map(scrubSpan);
+  if (Array.isArray(event.breadcrumbs)) scrubbed.breadcrumbs = event.breadcrumbs.map(scrubSpan);
   if (event.contexts?.trace) {
     scrubbed.contexts = { ...event.contexts, trace: scrubSpan(event.contexts.trace) };
   }

@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls = vi.hoisted(() => ({
@@ -66,7 +67,10 @@ vi.mock("../src/local/instance-lock.js", () => ({
   })
 }));
 const sentryInit = vi.hoisted(() => vi.fn());
-vi.mock("@sentry/node", () => ({ init: sentryInit }));
+vi.mock("@sentry/node", async (importOriginal) => ({
+  ...(await importOriginal()),
+  init: sentryInit
+}));
 vi.mock("../src/logger.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn() }
 }));
@@ -100,10 +104,240 @@ describe("bootstrap", () => {
     }
     expect(sentryInit).toHaveBeenCalledWith(
       expect.objectContaining({
+        traceLifecycle: "static",
+        dataCollection: expect.objectContaining({
+          userInfo: false,
+          cookies: false,
+          httpBodies: [],
+          databaseQueryData: false
+        }),
         beforeSend: scrubSentryEvent,
         beforeSendTransaction: scrubSentryEvent
       })
     );
+  });
+
+  it("filters URL-bearing headers before the SDK records HTTP span attributes", async () => {
+    vi.stubEnv("SENTRY_DSN", "https://key@sentry.example/1");
+    try {
+      await bootstrap({ listen: false });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    const Sentry = await vi.importActual("@sentry/node");
+    const headers = Object.fromEntries(
+      [
+        "Referer",
+        "Referrer",
+        "Location",
+        "Content-Location",
+        "Origin",
+        "Link",
+        "Refresh",
+        "Content-Security-Policy",
+        "Report-To",
+        "Reporting-Endpoints",
+        "SourceMap",
+        "Destination",
+        "Content-Base",
+        "Ping-From",
+        "Ping-To",
+        "X-Original-URL",
+        "X-Original-URI"
+      ].map((key) => [key, ["https://app.example/login?auth_code=private-header-code"]])
+    );
+    for (const lifecycle of ["request", "response"]) {
+      // This is the real helper used by Sentry's HTTP instrumentation, with bootstrap's options.
+      const attributes = Sentry.httpHeadersToSpanAttributes(
+        { ...headers, Accept: "application/json" },
+        sentryInit.mock.lastCall[0].dataCollection,
+        lifecycle
+      );
+      expect(JSON.stringify(attributes)).not.toContain("private-header-code");
+      expect(attributes[`http.${lifecycle}.header.accept`]).toEqual(["application/json"]);
+    }
+  });
+
+  it.each([
+    [false, "/callback?code=private-oauth-code", "/callback?[redacted]"],
+    [true, "/callback?code=private-oauth-code", "/callback?[redacted]"],
+    [false, "/callback#private-fragment", "/callback"]
+  ])(
+    "keeps URL credentials out of the real SDK's outgoing envelopes (header arrays: %s, request: %s)",
+    async (arrays, target, expectedUrl) => {
+      vi.stubEnv("SENTRY_DSN", "https://key@sentry.example/1");
+      try {
+        await bootstrap({ listen: false });
+      } finally {
+        vi.unstubAllEnvs();
+      }
+      const Sentry = await vi.importActual("@sentry/node");
+      const envelopes = [];
+      Sentry.init({
+        ...sentryInit.mock.lastCall[0],
+        // Source excerpts of this test contain literal sentinel URLs; keep runtime integrations.
+        integrations: (defaults) =>
+          defaults
+            .filter(({ name }) => name !== "ContextLines" && name !== "Express")
+            .concat(sentryInit.mock.lastCall[0].integrations),
+        tracesSampleRate: 1,
+        transport: () => ({
+          send: async (envelope) => {
+            envelopes.push(envelope);
+            return { statusCode: 200 };
+          },
+          flush: async () => true
+        })
+      });
+      try {
+        Sentry.getCurrentScope().clearBreadcrumbs();
+        Sentry.getIsolationScope().clearBreadcrumbs();
+        const headerValue = (value) => (arrays ? [value, value] : value);
+        const attributes = {
+          "http.request.header.referer": headerValue(
+            "https://app.example/invite?token=private-invite-token"
+          ),
+          "http.response.header.location": headerValue("/login?auth_code=private-auth-code"),
+          "custom.URL": headerValue("/callback?state=private-oauth-state"),
+          "custom.query": headerValue("other=private-query-value")
+        };
+        Sentry.startSpan({ name: "GET /callback", op: "http.server", attributes }, () => {
+          Sentry.startSpan(
+            {
+              name: "GET https://oauth.example/callback?code=private-oauth-code",
+              op: "http.client",
+              attributes: {
+                ...attributes,
+                "url.full": "https://oauth.example/callback?code=private-oauth-code",
+                "url.query": "code=private-oauth-code"
+              }
+            },
+            () => {}
+          );
+        });
+        Sentry.addBreadcrumb({
+          category: "http",
+          data: { url: "https://oauth.example/callback?state=private-breadcrumb-state" }
+        });
+        // Exercise the application-owned 5xx reporter with the same real SDK client.
+        const { errorHandler } = await import("../src/middleware/error-handler.js");
+        vi.stubEnv("SENTRY_DSN", "https://key@sentry.example/1");
+        const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+        try {
+          Sentry.withScope((scope) => {
+            // The request metadata that Sentry's HTTP instrumentation puts on the scope.
+            scope.setSDKProcessingMetadata({
+              normalizedRequest: {
+                method: "GET",
+                url: `https://app.example${target}`,
+                query_string: "code=private-oauth-code",
+                headers: { referer: "https://app.example/invite?token=private-invite-token" }
+              }
+            });
+            errorHandler(
+              new Error("Sentry 5xx regression"),
+              { method: "GET", originalUrl: target, id: "request-1" },
+              res,
+              () => {}
+            );
+          });
+        } finally {
+          vi.unstubAllEnvs();
+        }
+        expect(res.status).toHaveBeenCalledWith(500);
+        await Sentry.flush(2000);
+        const transactions = envelopes.flatMap(([, items]) =>
+          items.filter(([header]) => header.type === "transaction").map(([, event]) => event)
+        );
+        expect(transactions).toHaveLength(1);
+        expect(transactions[0].spans).toHaveLength(1);
+        const errors = envelopes.flatMap(([, items]) =>
+          items.filter(([header]) => header.type === "event").map(([, event]) => event)
+        );
+        expect(errors).toHaveLength(1);
+        expect(errors[0].exception.values[0].value).toBe("Sentry 5xx regression");
+        expect(errors[0].extra.url).toBe(expectedUrl);
+        expect(errors[0].request.url).toBe(`https://app.example${expectedUrl}`);
+        expect(errors[0].request).not.toHaveProperty("query_string");
+        expect(errors[0].breadcrumbs).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              category: "http",
+              data: { url: "https://oauth.example/callback?[redacted]" }
+            })
+          ])
+        );
+        for (const data of [transactions[0].contexts.trace.data, transactions[0].spans[0].data]) {
+          expect(data["http.request.header.referer"]).toEqual(
+            headerValue("https://app.example/invite?[redacted]")
+          );
+          expect(data["http.response.header.location"]).toEqual(headerValue("/login?[redacted]"));
+        }
+        expect(JSON.stringify(envelopes)).not.toMatch(/private-/);
+      } finally {
+        await Sentry.close(2000);
+      }
+    }
+  );
+
+  it("removes bare fragments from the real Http.ServerSpans transaction envelope", async () => {
+    vi.stubEnv("SENTRY_DSN", "https://key@sentry.example/1");
+    try {
+      await bootstrap({ listen: false });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    const Sentry = await vi.importActual("@sentry/node");
+    const envelopes = [];
+    const client = Sentry.init({
+      ...sentryInit.mock.lastCall[0],
+      tracesSampleRate: 1,
+      transport: () => ({
+        send: async (envelope) => {
+          envelopes.push(envelope);
+          return { statusCode: 200 };
+        },
+        flush: async () => true
+      })
+    });
+    try {
+      // The default Http integration installs Http.ServerSpans' request callback.
+      expect(client.getIntegrationByName("Http")).toBeDefined();
+      const req = Object.assign(new EventEmitter(), {
+        method: "GET",
+        url: "/callback#private-fragment",
+        headers: { host: "app.example" },
+        httpVersion: "1.1"
+      });
+      const res = Object.assign(new EventEmitter(), { statusCode: 500 });
+      // Drive the installed integration without a socket or an outbound request.
+      client.emit("httpServerRequest", req, res, {
+        method: req.method,
+        url: `http://app.example${req.url}`,
+        headers: req.headers
+      });
+      const startSpan = req._startSpanCallback?.deref();
+      expect(startSpan).toBeTypeOf("function");
+      startSpan(() => {
+        expect(Sentry.spanToJSON(Sentry.getActiveSpan()).attributes["url.fragment"]).toBe(
+          "private-fragment"
+        );
+        res.emit("close");
+      });
+      await Sentry.flush(2000);
+      const transactions = envelopes.flatMap(([, items]) =>
+        items.filter(([header]) => header.type === "transaction").map(([, event]) => event)
+      );
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0].transaction).toBe("GET /callback");
+      expect(transactions[0].contexts.trace.data["url.path"]).toBe("/callback");
+      expect(transactions[0].contexts.trace.data["url.full"]).toBe("http://app.example/callback");
+      expect(transactions[0].contexts.trace.data["http.response.status_code"]).toBe(500);
+      expect(transactions[0].contexts.trace.data).not.toHaveProperty("url.fragment");
+      expect(JSON.stringify(envelopes)).not.toMatch(/private-/);
+    } finally {
+      await Sentry.close(2000);
+    }
   });
 
   it("refuses to start while another server holds the database lock, touching nothing", async () => {

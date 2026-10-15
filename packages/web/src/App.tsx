@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Component, lazy, Suspense, useEffect, type ReactNode, type ReactElement } from "react";
 import { connectErrorMessage } from "./connect-errors";
+import extensions from "@easytestdata/web-extensions";
 
 export { connectErrorMessage };
 
@@ -154,6 +155,20 @@ export function App() {
                         <Route path="/setup" element={<SetupRoute />} />
                         <Route path="/settings" element={<SettingsPage />} />
                         <Route path="/settings/:section" element={<SettingsPage />} />
+                        {extensions.routes.map((route) => {
+                          const Element = route.element;
+                          return (
+                            <Route
+                              key={route.path}
+                              path={route.path}
+                              element={
+                                <Suspense fallback={<RouteLoadingFallback />}>
+                                  <Element />
+                                </Suspense>
+                              }
+                            />
+                          );
+                        })}
                       </Route>
                       {/* Admin routes */}
                       <Route

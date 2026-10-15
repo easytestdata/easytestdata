@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppConfig } from "../contexts/AppConfigContext";
+import extensions from "@easytestdata/web-extensions";
 import { Home, Settings, Menu, LogOut, ChevronDown, Shield, CodeXml } from "lucide-react";
 import {
   BrandLogo,
@@ -69,7 +70,7 @@ export function Layout() {
 
         {/* Center-left: Nav links */}
         <nav className="flex items-center gap-1">
-          {NAV_ITEMS.map((item) => {
+          {[...NAV_ITEMS, ...extensions.navItems].map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (
@@ -172,7 +173,7 @@ export function Layout() {
                 <SandboxBadge />
               </div>
               <nav className="flex-1 overflow-auto py-4 px-3 space-y-1">
-                {NAV_ITEMS.map((item) => {
+                {[...NAV_ITEMS, ...extensions.navItems].map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.path);
                   return (

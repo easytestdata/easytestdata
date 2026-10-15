@@ -7,7 +7,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
-      "@ui": resolve(__dirname, "../../packages/ui/src")
+      "@ui": resolve(__dirname, "../../packages/ui/src"),
+      "@easytestdata/web-extensions": resolve(__dirname, "src/extensions/default.ts"),
+      "@easytestdata/web-brand": resolve(__dirname, "src/extensions/default-brand.json")
     }
   },
   test: {

@@ -338,7 +338,7 @@ browser-bound, single-use state).
 4. `LoginPage` picks up `auth_code`, calls `POST /api/v1/auth/oauth/exchange` to swap for JWT tokens
 5. `AuthContext` clears any stale tokens from localStorage when `auth_code` is present (prevents loading a previous session's user)
 
-`ProtectedRoute` passes the original pathname, query and hash to `/login?next=...`; `LoginPage` keeps a validated same-origin relative destination in `sessionStorage` across OAuth and replaces the login page with it after sign-in (a pending invite takes priority, otherwise the fallback is `/home`). The destination is cleared on successful sign-in and on a fresh login visit without `next`, `auth_code` or `error`, so an abandoned attempt cannot redirect a later direct sign-in.
+`ProtectedRoute` passes the original pathname, query and hash to `/login?next=...`; `LoginPage` keeps a validated, URL-normalized same-origin relative destination in `sessionStorage` across OAuth and replaces the login page with it after sign-in (a pending invite takes priority, otherwise the fallback is `/home`). The destination is cleared on successful sign-in and on a fresh login visit without `next`, `auth_code` or `error`, so an abandoned attempt cannot redirect a later direct sign-in.
 
 `AuthContext.profileLoading` distinguishes a pending profile/permission request from a confirmed
 non-admin. `AdminLayout` waits for auth initialization and that request before redirecting or

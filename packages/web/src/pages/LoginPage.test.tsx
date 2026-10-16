@@ -38,6 +38,9 @@ function LoginRoutes() {
       <Route path="/invite" element={<div>invite-route</div>} />
       <Route path="/settings/:section" element={<DestinationRoute />} />
       <Route path="/extension-report" element={<DestinationRoute />} />
+      <Route path="/reports/:report" element={<DestinationRoute />} />
+      <Route path="/a/:slug" element={<DestinationRoute />} />
+      <Route path="/https:/*" element={<DestinationRoute />} />
     </Routes>
   );
 }
@@ -70,8 +73,7 @@ const UNSAFE_DESTINATIONS = [
   "%2F%2Fevil.example",
   "%2F%5Cevil.example",
   "%09https://evil.example",
-  "%0Ahttps://evil.example",
-  "/https://evil.example/x"
+  "%0Ahttps://evil.example"
 ];
 
 beforeEach(() => {
@@ -189,17 +191,51 @@ describe("LoginPage", () => {
     expect(sessionStorage.length).toBe(0);
   });
 
-  it.each(["/settings/team#urn:members", "/extension-report?url=https://example.com"])(
-    "keeps the same-origin destination %s from next and across OAuth",
+  it.each([
+    "/settings/team#urn:members",
+    "/extension-report?url=https://example.com",
+    "/reports/urn:daily",
+    "/a/b:c?x=1#y"
+  ])("keeps the same-origin destination %s from next and across OAuth", async (destination) => {
+    const first = renderLogin(`/login?next=${encodeURIComponent(destination)}`);
+    expect(sessionStorage.getItem(PENDING_DESTINATION_KEY)).toBe(destination);
+    first.unmount();
+
+    authState.exchangeOAuthCode.mockResolvedValue(undefined);
+    authState.user = USER;
+    renderLogin("/login?auth_code=oauth_abc");
+    expect(await screen.findByText(destination)).toBeInTheDocument();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("keeps a scheme-looking same-origin path from next and across OAuth", async () => {
+    const destination = "/https://evil.example/x";
+    const first = renderLogin(`/login?next=${encodeURIComponent(destination)}`);
+    expect(sessionStorage.getItem(PENDING_DESTINATION_KEY)).toBe(destination);
+    first.unmount();
+
+    authState.exchangeOAuthCode.mockResolvedValue(undefined);
+    authState.user = USER;
+    renderLogin("/login?auth_code=oauth_abc");
+    // React Router collapses repeated path slashes when navigating.
+    expect(await screen.findByText("/https:/evil.example/x")).toBeInTheDocument();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it.each(["/settings/../settings/team?x=1#members", "/settings/\tteam?x=\n1#mem\rbers"])(
+    "normalizes next and stored destinations before using them: %j",
     async (destination) => {
+      const normalized = "/settings/team?x=1#members";
       const first = renderLogin(`/login?next=${encodeURIComponent(destination)}`);
-      expect(sessionStorage.getItem(PENDING_DESTINATION_KEY)).toBe(destination);
+      expect(sessionStorage.getItem(PENDING_DESTINATION_KEY)).toBe(normalized);
       first.unmount();
 
+      // A value stored by an earlier login attempt is validated and normalized again.
+      sessionStorage.setItem(PENDING_DESTINATION_KEY, destination);
       authState.exchangeOAuthCode.mockResolvedValue(undefined);
       authState.user = USER;
       renderLogin("/login?auth_code=oauth_abc");
-      expect(await screen.findByText(destination)).toBeInTheDocument();
+      expect(await screen.findByText(normalized)).toBeInTheDocument();
       expect(sessionStorage.length).toBe(0);
     }
   );

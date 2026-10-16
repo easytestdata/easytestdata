@@ -59,12 +59,7 @@ function writePendingValue(key: string, value: string | null) {
 }
 
 function safeDestination(value: string | null): string | null {
-  if (
-    !value?.startsWith("/") ||
-    value.startsWith("//") ||
-    value.startsWith("/\\") ||
-    /[a-z][a-z\d+.-]*:/i.test(value.split(/[?#]/, 1)[0] ?? "")
-  ) {
+  if (!value?.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
     return null;
   }
   try {
@@ -75,7 +70,7 @@ function safeDestination(value: string | null): string | null {
     ) {
       return null;
     }
-    return value;
+    return url.pathname + url.search + url.hash;
   } catch {
     return null;
   }

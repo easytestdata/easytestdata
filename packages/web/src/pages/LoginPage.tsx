@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -36,24 +36,48 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   account_suspended: "This account is suspended."
 };
 
-// An invite link sends a signed-out user here with ?invite_token=. Signing in leaves for the
-// provider and comes back to /login?auth_code=..., so the token is kept for this tab meanwhile.
+// Signing in leaves for the provider and comes back to /login?auth_code=..., so an invite
+// token or protected page destination is kept for this tab meanwhile.
 const PENDING_INVITE_KEY = "easytestdata:pending-invite";
+const PENDING_DESTINATION_KEY = "easytestdata:pending-destination";
 
-function readPendingInvite(): string | null {
+function readPendingValue(key: string): string | null {
   try {
-    return sessionStorage.getItem(PENDING_INVITE_KEY);
+    return sessionStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-function writePendingInvite(token: string | null) {
+function writePendingValue(key: string, value: string | null) {
   try {
-    if (token) sessionStorage.setItem(PENDING_INVITE_KEY, token);
-    else sessionStorage.removeItem(PENDING_INVITE_KEY);
+    if (value) sessionStorage.setItem(key, value);
+    else sessionStorage.removeItem(key);
   } catch {
-    // Storage unavailable: the invite link can simply be opened again after signing in.
+    // Storage unavailable: the original link can simply be opened again after signing in.
+  }
+}
+
+function safeDestination(value: string | null): string | null {
+  if (
+    !value?.startsWith("/") ||
+    value.startsWith("//") ||
+    value.startsWith("/\\") ||
+    /[a-z][a-z\d+.-]*:/i.test(value)
+  ) {
+    return null;
+  }
+  try {
+    const url = new URL(value, window.location.origin);
+    if (
+      url.origin !== window.location.origin ||
+      decodeURIComponent(url.pathname).replace(/\/+$/, "").toLowerCase() === "/login"
+    ) {
+      return null;
+    }
+    return value;
+  } catch {
+    return null;
   }
 }
 
@@ -72,22 +96,34 @@ export function LoginPage() {
   const consumedAuthCodeRef = useRef<string | null>(null);
   const inviteTokenRef = useRef<string | null | undefined>(undefined);
   if (inviteTokenRef.current === undefined) {
-    inviteTokenRef.current = searchParams.get("invite_token") || readPendingInvite();
+    inviteTokenRef.current =
+      searchParams.get("invite_token") || readPendingValue(PENDING_INVITE_KEY);
   }
+  const destination = useMemo(() => {
+    if (deployment === "local") return null;
+    if (searchParams.has("next")) return safeDestination(searchParams.get("next"));
+    // A fresh login visit discards an abandoned destination; OAuth returns keep it for retries.
+    if (searchParams.has("auth_code") || searchParams.has("error")) {
+      return safeDestination(readPendingValue(PENDING_DESTINATION_KEY));
+    }
+    return null;
+  }, [searchParams, deployment]);
 
   useEffect(() => {
     const inviteToken = inviteTokenRef.current;
     if (!user) {
-      writePendingInvite(inviteToken ?? null);
+      writePendingValue(PENDING_INVITE_KEY, inviteToken ?? null);
+      writePendingValue(PENDING_DESTINATION_KEY, destination);
       return;
     }
-    writePendingInvite(null);
+    writePendingValue(PENDING_INVITE_KEY, null);
+    writePendingValue(PENDING_DESTINATION_KEY, null);
     if (inviteToken) {
       navigate(`/invite?token=${encodeURIComponent(inviteToken)}`, { replace: true });
       return;
     }
-    navigate("/home", { replace: true });
-  }, [user, navigate]);
+    navigate(destination || "/home", { replace: true });
+  }, [user, navigate, destination]);
 
   useEffect(() => {
     const code = searchParams.get("error");

@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginPage } from "./LoginPage";
 
@@ -25,20 +25,47 @@ vi.mock("@/contexts/AppConfigContext", () => ({
   useAppConfig: () => appConfig
 }));
 
+function DestinationRoute() {
+  const { pathname, search, hash } = useLocation();
+  return <div>{pathname + search + hash}</div>;
+}
+
+function LoginRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/home" element={<div>home-route</div>} />
+      <Route path="/invite" element={<div>invite-route</div>} />
+      <Route path="/settings/:section" element={<DestinationRoute />} />
+    </Routes>
+  );
+}
+
 function renderLogin(path = "/login", strict = false) {
   const tree = (
     <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/home" element={<div>home-route</div>} />
-        <Route path="/invite" element={<div>invite-route</div>} />
-      </Routes>
+      <LoginRoutes />
     </MemoryRouter>
   );
   return render(strict ? <StrictMode>{tree}</StrictMode> : tree);
 }
 
 const USER: User = { id: "u1", email: "u@example.com", displayName: "U", avatarUrl: null };
+const PENDING_DESTINATION_KEY = "easytestdata:pending-destination";
+const UNSAFE_DESTINATIONS = [
+  "https://evil.example/x",
+  "//evil.example",
+  "/\\evil.example",
+  "javascript:alert(1)",
+  "/login",
+  "",
+  "/login?next=/settings/team#members",
+  "/LOGIN/",
+  "/settings/../login",
+  "/%6cogin",
+  "/\t/evil.example",
+  "/https://evil.example/x"
+];
 
 beforeEach(() => {
   appConfig.deployment = "cloud";
@@ -115,6 +142,75 @@ describe("LoginPage", () => {
     authState.user = USER;
     renderLogin();
     expect(await screen.findByText("home-route")).toBeInTheDocument();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("keeps the destination across the OAuth round trip and clears it after sign-in", async () => {
+    const destination = "/settings/team?x=1#members";
+    const first = renderLogin(`/login?next=${encodeURIComponent(destination)}`, true);
+    expect(sessionStorage.getItem(PENDING_DESTINATION_KEY)).toBe(destination);
+    first.unmount();
+
+    authState.exchangeOAuthCode.mockResolvedValue(undefined);
+    const returned = renderLogin("/login?auth_code=oauth_abc", true);
+    await waitFor(() => expect(authState.exchangeOAuthCode).toHaveBeenCalledWith("oauth_abc"));
+    authState.user = USER;
+    returned.rerender(
+      <StrictMode>
+        <MemoryRouter>
+          <LoginRoutes />
+        </MemoryRouter>
+      </StrictMode>
+    );
+    expect(await screen.findByText(destination)).toBeInTheDocument();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it.each(UNSAFE_DESTINATIONS)("ignores unsafe next parameter %j", async (destination) => {
+    authState.user = USER;
+    renderLogin(`/login?next=${encodeURIComponent(destination)}`);
+    expect(await screen.findByText("home-route")).toBeInTheDocument();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it.each(UNSAFE_DESTINATIONS)("ignores unsafe stored destination %j", async (destination) => {
+    sessionStorage.setItem(PENDING_DESTINATION_KEY, destination);
+    authState.exchangeOAuthCode.mockResolvedValue(undefined);
+    authState.user = USER;
+    renderLogin("/login?auth_code=oauth_abc");
+    expect(await screen.findByText("home-route")).toBeInTheDocument();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("discards an abandoned destination on a later direct login visit", async () => {
+    const abandoned = renderLogin("/login?next=%2Fsettings%2Fteam%3Fx%3D1");
+    expect(sessionStorage.getItem(PENDING_DESTINATION_KEY)).toBe("/settings/team?x=1");
+    abandoned.unmount();
+
+    const direct = renderLogin();
+    expect(sessionStorage.getItem(PENDING_DESTINATION_KEY)).toBeNull();
+    direct.unmount();
+
+    authState.exchangeOAuthCode.mockResolvedValue(undefined);
+    authState.user = USER;
+    renderLogin("/login?auth_code=oauth_abc");
+    expect(await screen.findByText("home-route")).toBeInTheDocument();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("keeps the destination after a provider error so sign-in can be retried", async () => {
+    const destination = "/settings/team?x=1";
+    sessionStorage.setItem(PENDING_DESTINATION_KEY, destination);
+    const failed = renderLogin("/login?error=oauth_cancelled");
+    expect(screen.getByText(/cancelled or declined at the provider/)).toBeInTheDocument();
+    expect(sessionStorage.getItem(PENDING_DESTINATION_KEY)).toBe(destination);
+    failed.unmount();
+
+    authState.exchangeOAuthCode.mockResolvedValue(undefined);
+    authState.user = USER;
+    renderLogin("/login?auth_code=oauth_abc");
+    expect(await screen.findByText(destination)).toBeInTheDocument();
+    expect(sessionStorage.length).toBe(0);
   });
 
   it("returns to the invite after the OAuth round trip", async () => {
@@ -123,6 +219,16 @@ describe("LoginPage", () => {
     const first = renderLogin("/login?invite_token=inv_123");
     first.unmount();
     // Comes back from the provider with the code; the session is then established.
+    authState.user = USER;
+    renderLogin("/login?auth_code=oauth_abc");
+    expect(await screen.findByText("invite-route")).toBeInTheDocument();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("gives a pending invite priority over the destination and clears both", async () => {
+    const first = renderLogin("/login?invite_token=inv_123&next=%2Fsettings%2Fteam%3Fx%3D1");
+    first.unmount();
+    authState.exchangeOAuthCode.mockResolvedValue(undefined);
     authState.user = USER;
     renderLogin("/login?auth_code=oauth_abc");
     expect(await screen.findByText("invite-route")).toBeInTheDocument();

@@ -39,9 +39,13 @@ export function createProgressRenderer() {
       }
     },
 
+    // ora's warn() and info() stop the spinner to print their line, so start a new one with the
+    // same text: later update() calls must reach a running spinner (#5).
     warn(message) {
       if (spinner) {
+        const { text } = spinner;
         spinner.warn(message);
+        spinner = ora({ text, color: "cyan" }).start();
       } else {
         console.warn(chalk.yellow(message));
       }
@@ -49,8 +53,9 @@ export function createProgressRenderer() {
 
     info(message) {
       if (spinner) {
+        const { text } = spinner;
         spinner.info(message);
-        spinner = ora({ color: "cyan" }).start();
+        spinner = ora({ text, color: "cyan" }).start();
       } else {
         console.log(chalk.blue(message));
       }

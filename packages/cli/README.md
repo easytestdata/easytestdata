@@ -155,7 +155,7 @@ Because the default is relative to today, pass `--start-date` for fully reproduc
 ## Industry templates and scenarios
 
 Industry templates: `professional-services`, `saas`, `restaurant`, `construction`, `retail`,
-`healthcare`, `nonprofit`, `real-estate`.
+`healthcare`, `nonprofit`, `real-estate`, `veterinary-clinic`, `manufacturing`.
 
 Scenarios (`--scenario`): `quick-demo`, `healthy-small`, `cash-crisis`, `rapid-growth`, `seasonal`,
 `mature-stable`, `audit-nightmare`, `new-company`.

@@ -49,6 +49,22 @@ describe("JobDetailSheet re-run", () => {
       config: { templateId: "retail", presetId: "quick-demo", connectionId: "conn-1" }
     });
   });
+
+  it.each(["pending", "running", "cancelling", "failed", "cancelled", "failed_with_orphans"])(
+    "does not offer re-run for a %s load with the database default zero count",
+    (status) => {
+      render(
+        <JobDetailSheet
+          open
+          onOpenChange={() => {}}
+          job={{ ...finishedLoad, status, entity_count: 0 }}
+        />
+      );
+      expect(
+        screen.queryByRole("button", { name: "Load again (new data)" })
+      ).not.toBeInTheDocument();
+    }
+  );
 });
 
 describe("loadAgainDescription", () => {
@@ -78,6 +94,12 @@ describe("loadAgainDescription", () => {
       ).toContain("about 120 records");
     }
   );
+
+  it("omits the size when a zero created count has no plan estimate", () => {
+    expect(loadAgainDescription({ ...finishedLoad, entity_count: 0 }, "Acme Books")).toBe(
+      "This loads a new company with the same settings but different, newly generated data (records). It adds them to Acme Books on top of what is already there."
+    );
+  });
 
   it("says a load that removed test data first does so again", () => {
     expect(

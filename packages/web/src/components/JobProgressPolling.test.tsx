@@ -18,7 +18,7 @@ function makeJob(overrides: Partial<Job> = {}): Job {
     progress: null,
     result: null,
     error: null,
-    entity_count: null,
+    entity_count: 0,
     created_at: "2026-09-01T00:00:00.000Z",
     started_at: "2026-09-01T00:00:00.000Z",
     completed_at: null,
@@ -101,6 +101,21 @@ describe("job progress from the polled job", () => {
     );
     expect(screen.getByText("0 records created in Sandbox Co.")).toBeInTheDocument();
   });
+
+  it.each(["pending", "running", "cancelling", "failed", "cancelled", "failed_with_orphans"])(
+    "InlineJobProgress hides the database default zero count for a %s load",
+    (status) => {
+      render(
+        <InlineJobProgress
+          job={makeJob({ status, entity_count: 0 })}
+          connectionName="Sandbox Co"
+          onCancelJob={vi.fn()}
+        />
+      );
+      expect(screen.queryByText(/0 records created/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Your company is loaded")).not.toBeInTheDocument();
+    }
+  );
 
   it.each(["failed", "failed_with_orphans", "cancelled"] as const)(
     "InlineJobProgress lets a %s job close the card like the other terminal states",

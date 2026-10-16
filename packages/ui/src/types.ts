@@ -39,6 +39,8 @@ export interface JobArtifact {
 export interface JobResultSummary {
   metrics?: JobMetrics | null;
   counts?: Record<string, number> | null;
+  /** Load: the original plan estimate, separate from actual created records. */
+  estimatedEntities?: number | null;
   artifact?: JobArtifact | null;
   /** Every downloadable format written for the job, keyed by format. */
   artifacts?: Partial<Record<"json" | "csv", JobArtifact>> | null;

@@ -114,4 +114,19 @@ describe("rolled_back on the jobs API (PGlite)", () => {
 
     expect((await request(app).get(`/api/v1/jobs/${load}`)).body.rolled_back).toBe(false);
   });
+
+  it("keeps a completed load's estimate in its summary separately from actual creations", async () => {
+    const load = await insertJob("load", "completed");
+    await db.query("UPDATE jobs SET entity_count = 2, result = $1 WHERE id = $2", [
+      JSON.stringify({ estimatedEntities: 4, failures: [{ entity: "Customer" }] }),
+      load
+    ]);
+
+    const list = await request(app).get("/api/v1/jobs");
+    expect(list.status).toBe(200);
+    expect(list.body.find((job) => job.id === load)).toMatchObject({
+      entity_count: 2,
+      result_summary: { estimatedEntities: 4, failureCount: 1 }
+    });
+  });
 });

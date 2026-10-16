@@ -49,6 +49,22 @@ describe("JobDetailSheet re-run", () => {
       config: { templateId: "retail", presetId: "quick-demo", connectionId: "conn-1" }
     });
   });
+
+  it.each(["pending", "running", "cancelling", "failed", "cancelled", "failed_with_orphans"])(
+    "does not offer re-run for a %s load with the database default zero count",
+    (status) => {
+      render(
+        <JobDetailSheet
+          open
+          onOpenChange={() => {}}
+          job={{ ...finishedLoad, status, entity_count: 0 }}
+        />
+      );
+      expect(
+        screen.queryByRole("button", { name: "Load again (new data)" })
+      ).not.toBeInTheDocument();
+    }
+  );
 });
 
 describe("loadAgainDescription", () => {
@@ -60,6 +76,28 @@ describe("loadAgainDescription", () => {
   it("says a load without 'remove first' adds another company on top", () => {
     expect(loadAgainDescription(withConfig({}), "Acme Books")).toMatch(
       /about 120 records.*adds them to Acme Books on top of what is already there/
+    );
+  });
+
+  it.each(["result", "result_summary"] as const)(
+    "uses the plan estimate from %s when fewer records were created",
+    (field) => {
+      expect(
+        loadAgainDescription(
+          {
+            ...finishedLoad,
+            entity_count: 0,
+            [field]: { estimatedEntities: 120 }
+          },
+          "Acme Books"
+        )
+      ).toContain("about 120 records");
+    }
+  );
+
+  it("omits the size when a zero created count has no plan estimate", () => {
+    expect(loadAgainDescription({ ...finishedLoad, entity_count: 0 }, "Acme Books")).toBe(
+      "This loads a new company with the same settings but different, newly generated data (records). It adds them to Acme Books on top of what is already there."
     );
   });
 

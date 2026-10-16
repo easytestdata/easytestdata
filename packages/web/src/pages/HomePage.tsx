@@ -935,7 +935,9 @@ export function HomePage() {
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
                           {summary ||
-                            (job.entity_count ? `${formatNumber(job.entity_count)} records` : "-")}
+                            (job.status === "completed" && job.entity_count != null
+                              ? `${formatNumber(job.entity_count)} records`
+                              : "-")}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">
                           {timeAgo(job.created_at)}

@@ -27,6 +27,7 @@ interface ConnectionHealth {
 interface JobResultSummary {
   metrics?: Record<string, number | undefined> | null;
   counts?: Record<string, number> | null;
+  estimatedEntities?: number | null;
   artifact?: { filename: string; path: string; format: string } | null;
   deletedByEntity?: Record<string, number> | null;
   deletedTotal?: number | null;

@@ -138,7 +138,7 @@ function buildJob(id: string, type: "generate" | "load") {
     progress: null,
     result: null,
     error: null,
-    entity_count: null,
+    entity_count: 0,
     created_at: "2026-07-01T00:00:00.000Z",
     started_at: null,
     completed_at: null,
@@ -594,6 +594,50 @@ describe("HomePage actions", () => {
     }
     expect(within(table).queryByText(/^purge$/i)).not.toBeInTheDocument();
   });
+
+  it.each(["pending", "running", "cancelling", "failed", "cancelled", "failed_with_orphans"])(
+    "shows no record count in Recent activity for a %s load with the database default zero",
+    async (status) => {
+      hookState.jobs = [
+        {
+          ...buildJob("job-unfinished", "load"),
+          status,
+          error:
+            status === "failed_with_orphans"
+              ? "Stopped after 5 records were created. Roll back to remove them."
+              : null
+        }
+      ];
+
+      renderWithClient(<HomePage />);
+
+      const table = await screen.findByRole("table");
+      const [, row] = within(table).getAllByRole("row");
+      expect(within(row!).getAllByRole("cell")[3]).toHaveTextContent(/^-$/);
+      expect(within(table).queryByText("0 records")).not.toBeInTheDocument();
+    }
+  );
+
+  it.each([0, 2])(
+    "shows zero created records in Recent activity for a completed load with %i failures",
+    async (failureCount) => {
+      hookState.jobs = [
+        {
+          ...completedLoad("job-empty", "conn-1"),
+          entity_count: 0,
+          result_summary: { counts: { customersCreated: 0, invoicesCreated: 0 }, failureCount }
+        }
+      ];
+
+      renderWithClient(<HomePage />);
+
+      const table = await screen.findByRole("table");
+      expect(within(table).getByText("0 records")).toBeInTheDocument();
+      expect(
+        within(table).getByText(failureCount ? "Completed with errors" : "Completed")
+      ).toBeInTheDocument();
+    }
+  );
 
   it("keeps a sandbox's health dot grey until its health check answers", () => {
     hookState.health = undefined;

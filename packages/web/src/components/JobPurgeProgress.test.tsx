@@ -119,12 +119,29 @@ describe("InlineJobProgress for a load with refused records", () => {
     );
     expect(screen.getByText("Your company is partly loaded")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /QuickBooks refused 3 record\(s\); everything else was created in Acme Books/
-      )
+      screen.getByText(/42 records created in Acme Books\. QuickBooks refused 3 record\(s\)/)
     ).toBeInTheDocument();
     expect(screen.queryByText("Your company is loaded")).not.toBeInTheDocument();
     screen.getByRole("button", { name: "View details" }).click();
     expect(onViewDetails).toHaveBeenCalled();
+  });
+
+  it("shows zero creations when QuickBooks refused every attempted record", () => {
+    render(
+      <InlineJobProgress
+        job={purgeJob({
+          type: "load",
+          config: {},
+          entity_count: 0,
+          result_summary: { failureCount: 3 }
+        })}
+        connectionName="Acme Books"
+        onCancelJob={vi.fn()}
+      />
+    );
+    expect(screen.getByText("No records were created")).toBeInTheDocument();
+    expect(
+      screen.getByText(/0 records created in Acme Books\. QuickBooks refused 3 record\(s\)/)
+    ).toBeInTheDocument();
   });
 });

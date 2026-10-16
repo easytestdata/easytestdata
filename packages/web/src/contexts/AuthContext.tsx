@@ -93,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const profileRequestId = useRef(0);
+  const profileUserId = useRef<string | null>(null);
   const { deployment, loading: configLoading } = useAppConfig();
   useClearQueryCacheOnSessionChange(user?.id ?? null, teamId);
 
@@ -100,12 +101,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = useCallback(() => {
     const requestId = ++profileRequestId.current;
     setProfileLoading(true);
-    // Admin links and badges must not retain the previous account's permission while loading.
-    setIsAdmin(false);
+    // Keep confirmed permissions across team switches, but never carry them to another account.
+    // The token is current even when handleAuthResponse's setUser has not rendered yet.
+    if (readUserIdFromAccessToken(api.getAccessToken()) !== profileUserId.current) {
+      profileUserId.current = null;
+      setIsAdmin(false);
+    }
     return api
       .getProfile()
       .then((profile) => {
         if (requestId !== profileRequestId.current) return;
+        profileUserId.current = profile.id;
         setUser({
           id: profile.id,
           email: profile.email,
@@ -173,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!token) {
         if (deploymentRef.current === "local") return;
         ++profileRequestId.current;
+        profileUserId.current = null;
         setUser(null);
         setTeamId(null);
         setIsAdmin(false);
@@ -212,6 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutFn = useCallback(() => {
     api.logout();
     ++profileRequestId.current;
+    profileUserId.current = null;
     setUser(null);
     setTeamId(null);
     setIsAdmin(false);

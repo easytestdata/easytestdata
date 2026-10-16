@@ -63,7 +63,7 @@ function safeDestination(value: string | null): string | null {
     !value?.startsWith("/") ||
     value.startsWith("//") ||
     value.startsWith("/\\") ||
-    /[a-z][a-z\d+.-]*:/i.test(value)
+    /[a-z][a-z\d+.-]*:/i.test(value.split(/[?#]/, 1)[0] ?? "")
   ) {
     return null;
   }

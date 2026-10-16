@@ -48,18 +48,18 @@ function AdminNavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?
 }
 
 export function AdminLayout() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading, profileLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   useAdminHotkeys();
 
-  // Redirect non-admins
+  // A user can be signed in before their profile supplies the admin permission.
   useEffect(() => {
-    if (isAdmin === false) navigate("/home", { replace: true });
-  }, [isAdmin, navigate]);
+    if (!loading && !profileLoading && isAdmin === false) navigate("/home", { replace: true });
+  }, [isAdmin, loading, profileLoading, navigate]);
 
-  if (!isAdmin) return null;
+  if (loading || profileLoading || !isAdmin) return null;
 
   return (
     <div className="flex h-screen bg-background">

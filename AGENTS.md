@@ -340,6 +340,11 @@ browser-bound, single-use state).
 
 `ProtectedRoute` passes the original pathname, query and hash to `/login?next=...`; `LoginPage` keeps a validated same-origin relative destination in `sessionStorage` across OAuth and replaces the login page with it after sign-in (a pending invite takes priority, otherwise the fallback is `/home`). The destination is cleared on successful sign-in and on a fresh login visit without `next`, `auth_code` or `error`, so an abandoned attempt cannot redirect a later direct sign-in.
 
+`AuthContext.profileLoading` distinguishes a pending profile/permission request from a confirmed
+non-admin. `AdminLayout` waits for auth initialization and that request before redirecting or
+rendering admin pages; OAuth can establish the user before their permissions arrive. Admin links
+and badges stay hidden during profile loading because `isAdmin` is reset when the request starts.
+
 **Important**: The `AuthProvider` init effect checks for `auth_code` in the URL and clears old tokens before fetching any profile. This prevents a race condition where stale session tokens could load the wrong user for an account that wasn't just authenticated.
 
 ### New accounts

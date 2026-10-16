@@ -37,6 +37,7 @@ function LoginRoutes() {
       <Route path="/home" element={<div>home-route</div>} />
       <Route path="/invite" element={<div>invite-route</div>} />
       <Route path="/settings/:section" element={<DestinationRoute />} />
+      <Route path="/extension-report" element={<DestinationRoute />} />
     </Routes>
   );
 }
@@ -57,6 +58,7 @@ const UNSAFE_DESTINATIONS = [
   "//evil.example",
   "/\\evil.example",
   "javascript:alert(1)",
+  "data:text/html,test",
   "/login",
   "",
   "/login?next=/settings/team#members",
@@ -64,6 +66,11 @@ const UNSAFE_DESTINATIONS = [
   "/settings/../login",
   "/%6cogin",
   "/\t/evil.example",
+  "/\n/evil.example",
+  "%2F%2Fevil.example",
+  "%2F%5Cevil.example",
+  "%09https://evil.example",
+  "%0Ahttps://evil.example",
   "/https://evil.example/x"
 ];
 
@@ -181,6 +188,21 @@ describe("LoginPage", () => {
     expect(await screen.findByText("home-route")).toBeInTheDocument();
     expect(sessionStorage.length).toBe(0);
   });
+
+  it.each(["/settings/team#urn:members", "/extension-report?url=https://example.com"])(
+    "keeps the same-origin destination %s from next and across OAuth",
+    async (destination) => {
+      const first = renderLogin(`/login?next=${encodeURIComponent(destination)}`);
+      expect(sessionStorage.getItem(PENDING_DESTINATION_KEY)).toBe(destination);
+      first.unmount();
+
+      authState.exchangeOAuthCode.mockResolvedValue(undefined);
+      authState.user = USER;
+      renderLogin("/login?auth_code=oauth_abc");
+      expect(await screen.findByText(destination)).toBeInTheDocument();
+      expect(sessionStorage.length).toBe(0);
+    }
+  );
 
   it("discards an abandoned destination on a later direct login visit", async () => {
     const abandoned = renderLogin("/login?next=%2Fsettings%2Fteam%3Fx%3D1");

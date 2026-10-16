@@ -899,7 +899,7 @@ export const INDUSTRY_TEMPLATES = {
       {
         name: "Lab Work",
         accountType: "Expense",
-        subType: "OtherMiscServiceCost",
+        subType: "OtherMiscellaneousServiceCost",
         weight: 0.18
       },
       {
@@ -917,7 +917,7 @@ export const INDUSTRY_TEMPLATES = {
       {
         name: "Relief Staff Wages",
         accountType: "Expense",
-        subType: "CostOfLaborCos",
+        subType: "CostOfLabor",
         weight: 0.08
       },
       {
@@ -1015,7 +1015,7 @@ export const INDUSTRY_TEMPLATES = {
       {
         name: "Subcontracted Work",
         accountType: "Expense",
-        subType: "OtherMiscServiceCost",
+        subType: "OtherMiscellaneousServiceCost",
         weight: 0.2
       },
       {
@@ -1027,7 +1027,7 @@ export const INDUSTRY_TEMPLATES = {
       {
         name: "Freight & Delivery",
         accountType: "Expense",
-        subType: "Shipping",
+        subType: "ShippingFreightDelivery",
         weight: 0.08
       },
       {
@@ -1051,7 +1051,7 @@ export const INDUSTRY_TEMPLATES = {
       {
         name: "Temporary Production Wages",
         accountType: "Expense",
-        subType: "CostOfLaborCos",
+        subType: "CostOfLabor",
         weight: 0.03
       },
       {

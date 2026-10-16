@@ -52,7 +52,7 @@ Industry templates define the financial profile of a business type — service i
     {
       "name": "Staff Salaries",
       "accountType": "Expense",
-      "subType": "CostOfLaborCos",
+      "subType": "CostOfLabor",
       "weight": 0.3
     },
     {
@@ -82,14 +82,14 @@ Industry templates define the financial profile of a business type — service i
 - `suffix` — Unique short identifier (appended to QBO item names)
 - `name` — Human-readable service/product name
 - `accountType` — Must be `"Income"`
-- `subType` — One of: `ServiceFeeIncome`, `SalesOfProductIncome`, `OtherPrimaryIncome`, `NonProfitIncome`, `RentalIncome`
+- `subType` — One of: `ServiceFeeIncome`, `SalesOfProductIncome`, `OtherPrimaryIncome`, `NonProfitIncome`
 - `weight` — Revenue share (0-1). Weights don't need to sum to 1 (they're normalized).
 
 **Expense Categories** (1-15 items):
 
 - `name` — Unique category name
 - `accountType` — Must be `"Expense"`
-- `subType` — One of: `RentOrLeaseOfBuildings`, `Utilities`, `Insurance`, `OfficeGeneralAdministrativeExpenses`, `LegalProfessionalFees`, `Travel`, `DuesSubscriptions`, `EntertainmentMeals`, `SuppliesMaterials`, `RepairMaintenance`, `EquipmentRental`, `Auto`, `CostOfLaborCos`, `OtherMiscServiceCost`, `Advertising`, `TravelMeals`, `Shipping`, `Stationery`
+- `subType` — One of: `RentOrLeaseOfBuildings`, `Utilities`, `Insurance`, `OfficeGeneralAdministrativeExpenses`, `LegalProfessionalFees`, `Travel`, `DuesSubscriptions`, `EntertainmentMeals`, `SuppliesMaterials`, `RepairMaintenance`, `EquipmentRental`, `Auto`, `CostOfLabor`, `OtherMiscellaneousServiceCost`, `AdvertisingPromotional`, `TravelMeals`, `ShippingFreightDelivery`, `InterestPaid`, `TaxesPaid`
 - `weight` — Expense share (0-1). Weights don't need to sum to 1.
 
 **Ratios** (optional overrides):

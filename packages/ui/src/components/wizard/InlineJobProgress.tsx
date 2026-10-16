@@ -224,12 +224,16 @@ export function InlineJobProgress({
                 refused > 0 ? "text-amber-900" : "text-emerald-900"
               )}
             >
-              {refused > 0 ? "Your company is partly loaded" : "Your company is loaded"}
+              {refused > 0
+                ? job.entity_count === 0
+                  ? "No records were created"
+                  : "Your company is partly loaded"
+                : "Your company is loaded"}
             </h3>
             <p className={cn("mt-1 text-sm", refused > 0 ? "text-amber-800" : "text-emerald-700")}>
               {refused > 0
-                ? `QuickBooks refused ${refused} record(s); everything else was created in ${sandboxName}. Open View details to see which and why.`
-                : `${job.entity_count ? `${job.entity_count} records created` : "Your test data is ready"}${
+                ? `${job.entity_count != null ? `${job.entity_count} records created in ${sandboxName}. ` : ""}QuickBooks refused ${refused} record(s). Open View details to see which and why.`
+                : `${job.entity_count != null ? `${job.entity_count} records created` : "Your test data is ready"}${
                     connectionName ? ` in ${connectionName}` : " in your QuickBooks sandbox"
                   }.`}
             </p>

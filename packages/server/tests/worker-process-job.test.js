@@ -1076,6 +1076,99 @@ describe("processJob usage-limit handling", () => {
     const statusUpdates = () =>
       queryMock.mock.calls.filter(([sql]) => /UPDATE jobs SET status/.test(String(sql)));
 
+    it.each([
+      [
+        "with refused records",
+        { customersCreated: 1, invoicesCreated: 1 },
+        [{ entity: "Customer" }],
+        2
+      ],
+      [
+        "with every planned record created",
+        { customersCreated: 2, vendorsCreated: 1, employeesCreated: 1 },
+        [],
+        4
+      ],
+      [
+        "with no records created",
+        { customersCreated: 0, invoicesCreated: 0 },
+        [{ entity: "Customer" }],
+        0
+      ],
+      [
+        "with reused and reactivated master data",
+        {
+          customersCreated: 1,
+          vendorsCreated: 0,
+          employeesCreated: 0,
+          customersReactivated: 2,
+          vendorsReactivated: 3,
+          employeesReactivated: 4,
+          serviceItemsLoaded: 5
+        },
+        [],
+        1
+      ],
+      [
+        "with every counted transaction type",
+        {
+          estimatesCreated: 1,
+          purchaseOrdersCreated: 2,
+          invoicesCreated: 3,
+          billsCreated: 4,
+          payrollCreated: 5,
+          salesReceiptsCreated: 6,
+          directExpensesCreated: 7,
+          paymentsCreated: 8,
+          billPaymentsCreated: 9,
+          creditMemosCreated: 10,
+          refundReceiptsCreated: 11,
+          vendorCreditsCreated: 12,
+          depositsCreated: 13,
+          transfersCreated: 14,
+          journalEntriesCreated: 15
+        },
+        [],
+        120
+      ]
+    ])(
+      "stores actual created records for a completed load %s",
+      async (_label, counts, failures, actual) => {
+        const job = {
+          id: "job-count",
+          team_id: "team-1",
+          status: "pending",
+          type: "load",
+          connection_id: CONN_ID,
+          config: {}
+        };
+        mockLoadJob(job);
+        // Rollback's ledger includes accounts/items and reactivations; its total is not creations.
+        const ledger = { totalTracked: 200, entries: {} };
+        loadPlanIntoQboMock.mockResolvedValue({ counts, failures, ledger });
+
+        await processJob({ jobId: job.id, kind: "qbo" });
+
+        const completed = queryMock.mock.calls.find(([sql]) =>
+          String(sql).includes("SET status = 'completed'")
+        );
+        expect(completed[1][1]).toBe(actual);
+        expect(JSON.parse(completed[1][0])).toMatchObject({
+          counts,
+          failures,
+          ledger,
+          estimatedEntities: 4
+        });
+        // Pre-flight limits still use the plan estimate, even when QBO refused records.
+        expect(enforceWorkerExecutionLimitsMock).toHaveBeenCalledWith({
+          teamId: job.team_id,
+          jobId: job.id,
+          type: "load",
+          estimatedEntities: 4
+        });
+      }
+    );
+
     it("stops a running load once the job is cancelling and marks it cancelled", async () => {
       const job = {
         id: "job-c1",

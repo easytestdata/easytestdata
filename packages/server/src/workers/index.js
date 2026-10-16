@@ -611,7 +611,12 @@ async function runJob(jobId, signal, options = {}) {
           artifactError = "The plan file could not be saved; the data was loaded.";
         }
       }
-      const entityCount = estimatedEntities;
+      // The load's *Created counts cover parties and transactions, like the estimate. Its
+      // ledger also tracks accounts, items and reactivations, so totalTracked is not creations.
+      const entityCount = Object.entries(result.counts || {}).reduce(
+        (total, [name, count]) => total + (name.endsWith("Created") ? count : 0),
+        0
+      );
       let marked;
       try {
         await query("UPDATE qbo_connections SET last_used_at = NOW() WHERE id = $1", [qboConn.id]);
@@ -619,6 +624,7 @@ async function runJob(jobId, signal, options = {}) {
           jobId,
           {
             ...result,
+            estimatedEntities,
             artifact,
             ...(artifactError ? { artifactError } : {}),
             metrics: plan.metrics,

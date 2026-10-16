@@ -595,6 +595,22 @@ describe("HomePage actions", () => {
     expect(within(table).queryByText(/^purge$/i)).not.toBeInTheDocument();
   });
 
+  it("shows zero created records in Recent activity for a completed load with failures", async () => {
+    hookState.jobs = [
+      {
+        ...completedLoad("job-empty", "conn-1"),
+        entity_count: 0,
+        result_summary: { counts: { customersCreated: 0, invoicesCreated: 0 }, failureCount: 2 }
+      }
+    ];
+
+    renderWithClient(<HomePage />);
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByText("0 records")).toBeInTheDocument();
+    expect(within(table).getByText("Completed with errors")).toBeInTheDocument();
+  });
+
   it("keeps a sandbox's health dot grey until its health check answers", () => {
     hookState.health = undefined;
     const { container, rerender } = renderWithClient(<HomePage />);

@@ -271,7 +271,9 @@ export function loadAgainDescription(
 ): string {
   const cfg = (job.config || {}) as Record<string, unknown>;
   const sandbox = sandboxName || "the sandbox";
-  const size = job.entity_count ? `about ${job.entity_count.toLocaleString("en-US")} ` : "";
+  const result = (job.result ?? job.result_summary) as JobResultSummary | null;
+  const estimate = result?.estimatedEntities ?? job.entity_count;
+  const size = estimate ? `about ${estimate.toLocaleString("en-US")} ` : "";
   const fresh = `This loads a new company with the same settings but different, newly generated data (${size}records).`;
   if (cfg.purgeMode === "all") {
     return `${fresh} It first erases all data in ${sandbox}, as the original load did: every transaction of the types ${productName} loads is deleted, including ones you entered by hand, and all customers, vendors, employees and items are made inactive. Accounts stay.`;

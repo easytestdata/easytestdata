@@ -91,6 +91,17 @@ describe("job progress from the polled job", () => {
     expect(screen.getByText(/120 records created in Sandbox Co/)).toBeInTheDocument();
   });
 
+  it("shows zero records created when a completed load only reused existing records", () => {
+    render(
+      <InlineJobProgress
+        job={makeJob({ status: "completed", entity_count: 0 })}
+        connectionName="Sandbox Co"
+        onCancelJob={vi.fn()}
+      />
+    );
+    expect(screen.getByText("0 records created in Sandbox Co.")).toBeInTheDocument();
+  });
+
   it.each(["failed", "failed_with_orphans", "cancelled"] as const)(
     "InlineJobProgress lets a %s job close the card like the other terminal states",
     (status) => {

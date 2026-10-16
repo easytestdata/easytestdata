@@ -76,6 +76,7 @@ export function jobRoutes() {
                 CASE WHEN result IS NOT NULL THEN jsonb_build_object(
                   'metrics', result->'metrics',
                   'counts', result->'counts',
+                  'estimatedEntities', result->'estimatedEntities',
                   'artifact', result->'artifact',
                   'artifacts', result->'artifacts',
                   'deletedByEntity', result->'deletedByEntity',

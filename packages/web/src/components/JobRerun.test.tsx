@@ -63,6 +63,22 @@ describe("loadAgainDescription", () => {
     );
   });
 
+  it.each(["result", "result_summary"] as const)(
+    "uses the plan estimate from %s when fewer records were created",
+    (field) => {
+      expect(
+        loadAgainDescription(
+          {
+            ...finishedLoad,
+            entity_count: 0,
+            [field]: { estimatedEntities: 120 }
+          },
+          "Acme Books"
+        )
+      ).toContain("about 120 records");
+    }
+  );
+
   it("says a load that removed test data first does so again", () => {
     expect(
       loadAgainDescription(withConfig({ purgeMode: "generated", tag: "EZTD" }), "Acme Books")

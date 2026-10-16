@@ -247,8 +247,8 @@ export function buildPlanFromScenario(config) {
 }
 
 /**
- * Number of QBO entities a job for this config will create: builds the plan (tens of
- * milliseconds) and counts it, the same way the worker counts it at execution time.
+ * Estimated number of QBO entities for this config: builds the plan (tens of milliseconds)
+ * and counts it, the same way the worker estimates it for execution-time limits.
  */
 export function estimateEntityCount(config) {
   return estimatePlan(config).estimatedEntities;

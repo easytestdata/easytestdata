@@ -66,6 +66,7 @@ function safeDestination(value: string | null): string | null {
     const url = new URL(value, window.location.origin);
     if (
       url.origin !== window.location.origin ||
+      url.pathname.startsWith("//") ||
       decodeURIComponent(url.pathname).replace(/\/+$/, "").toLowerCase() === "/login"
     ) {
       return null;

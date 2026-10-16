@@ -56,7 +56,13 @@ function renderLogin(path = "/login", strict = false) {
 
 const USER: User = { id: "u1", email: "u@example.com", displayName: "U", avatarUrl: null };
 const PENDING_DESTINATION_KEY = "easytestdata:pending-destination";
+const NORMALIZED_UNSAFE_DESTINATIONS = [
+  "/.//evil.example",
+  "/..//evil.example",
+  "/./\\evil.example"
+];
 const UNSAFE_DESTINATIONS = [
+  ...NORMALIZED_UNSAFE_DESTINATIONS,
   "https://evil.example/x",
   "//evil.example",
   "/\\evil.example",
@@ -190,6 +196,27 @@ describe("LoginPage", () => {
     expect(await screen.findByText("home-route")).toBeInTheDocument();
     expect(sessionStorage.length).toBe(0);
   });
+
+  it.each(NORMALIZED_UNSAFE_DESTINATIONS)(
+    "falls back home across OAuth when next normalizes to a network path: %j",
+    async (destination) => {
+      const first = renderLogin(`/login?next=${encodeURIComponent(destination)}`);
+      expect(sessionStorage.getItem(PENDING_DESTINATION_KEY)).toBeNull();
+      first.unmount();
+
+      authState.exchangeOAuthCode.mockResolvedValue(undefined);
+      const returned = renderLogin("/login?auth_code=oauth_abc");
+      await waitFor(() => expect(authState.exchangeOAuthCode).toHaveBeenCalledWith("oauth_abc"));
+      authState.user = USER;
+      returned.rerender(
+        <MemoryRouter>
+          <LoginRoutes />
+        </MemoryRouter>
+      );
+      expect(await screen.findByText("home-route")).toBeInTheDocument();
+      expect(sessionStorage.length).toBe(0);
+    }
+  );
 
   it.each([
     "/settings/team#urn:members",

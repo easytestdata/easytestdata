@@ -30,7 +30,7 @@ EasyTestData is an open-source project that generates realistic test data for Qu
 | QuickBooks Online (QBO)       | Spell out on first use per page, then "QBO".                                                                                                            |
 | sandbox                       | Always say sandbox. EasyTestData never connects to production.                                                                                          |
 | test data                     | In headlines. Use "synthetic" only to explain that the data is fake.                                                                                    |
-| industry templates, scenarios | 8 templates, 8 scenarios. Say "scenario", not "preset" or "profile" (the CLI flag is `--scenario`).                                                     |
+| industry templates, scenarios | 10 templates, 8 scenarios. Say "scenario", not "preset" or "profile" (the CLI flag is `--scenario`).                                                    |
 | profit                        | Say "target profit (before adjustments)", not "EBITDA" or "net income".                                                                                 |
 | records                       | What EasyTestData creates in QBO. Not "entities".                                                                                                       |
 | Remove test data / purge      | Deletes tagged transactions and makes created customers, vendors, employees and items inactive; accounts stay. Never "removes exactly what it created". |

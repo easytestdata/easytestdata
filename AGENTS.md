@@ -115,7 +115,7 @@ Deterministic financial data generation. Zero runtime dependencies; runs in Node
   web form refuse more rather than let core clamp), and months x customers <= 5000. The server validates all of
   this in `normalizeScenarioConfig` (400) before building any plan.
 
-Templates (8 industries) and presets (8 scenarios) live in `src/templates/`. The first ```js block
+Templates (10 industries) and presets (8 scenarios) live in `src/templates/`. The first ```js block
 of `packages/core/README.md`and of the root`README.md`run in`tests/readme.test.js`, so keep
 them working.
 

@@ -456,7 +456,11 @@ const TEMPLATE_BLURBS = {
   retail: "Mostly cash sales, cost-of-goods bills and a higher refund rate.",
   healthcare: "Invoiced services with 30 to 90 day collections and frequent partial payments.",
   nonprofit: "Donations and grants, program and fundraising expenses.",
-  "real-estate": "Rental and management-fee invoices with maintenance, tax and insurance costs."
+  "real-estate": "Rental and management-fee invoices with maintenance, tax and insurance costs.",
+  "veterinary-clinic":
+    "Exams, surgery, medications, boarding and grooming, mostly paid at the time of service.",
+  manufacturing:
+    "Wholesale product invoices, raw materials, subcontracted work and equipment maintenance."
 };
 
 const pct = (n) => `${Math.round(n * 100)}%`;

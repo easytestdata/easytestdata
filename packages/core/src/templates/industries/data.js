@@ -847,5 +847,219 @@ export const INDUSTRY_TEMPLATES = {
         weight: 0.05
       }
     ]
+  },
+  "veterinary-clinic": {
+    name: "Veterinary Clinic",
+    description:
+      "Animal clinics with exams, surgery, medications, boarding and grooming. 85% cash sales.",
+    serviceItems: [
+      {
+        suffix: "Exam",
+        name: "Examination Fees",
+        accountType: "Income",
+        subType: "ServiceFeeIncome",
+        weight: 0.3
+      },
+      {
+        suffix: "Surgery",
+        name: "Surgical Procedures",
+        accountType: "Income",
+        subType: "ServiceFeeIncome",
+        weight: 0.25
+      },
+      {
+        suffix: "Meds",
+        name: "Medications & Vaccines",
+        accountType: "Income",
+        subType: "SalesOfProductIncome",
+        weight: 0.2
+      },
+      {
+        suffix: "Boarding",
+        name: "Pet Boarding",
+        accountType: "Income",
+        subType: "ServiceFeeIncome",
+        weight: 0.15
+      },
+      {
+        suffix: "Grooming",
+        name: "Grooming Services",
+        accountType: "Income",
+        subType: "ServiceFeeIncome",
+        weight: 0.1
+      }
+    ],
+    expenseCategories: [
+      {
+        name: "Medical Supplies",
+        accountType: "Expense",
+        subType: "SuppliesMaterials",
+        weight: 0.22
+      },
+      {
+        name: "Lab Work",
+        accountType: "Expense",
+        subType: "OtherMiscServiceCost",
+        weight: 0.18
+      },
+      {
+        name: "Pharmacy & Drug Costs",
+        accountType: "Expense",
+        subType: "SuppliesMaterials",
+        weight: 0.2
+      },
+      {
+        name: "Rent",
+        accountType: "Expense",
+        subType: "RentOrLeaseOfBuildings",
+        weight: 0.15
+      },
+      {
+        name: "Relief Staff Wages",
+        accountType: "Expense",
+        subType: "CostOfLaborCos",
+        weight: 0.08
+      },
+      {
+        name: "Insurance",
+        accountType: "Expense",
+        subType: "Insurance",
+        weight: 0.05
+      },
+      {
+        name: "Equipment Maintenance",
+        accountType: "Expense",
+        subType: "RepairMaintenance",
+        weight: 0.07
+      },
+      {
+        name: "Utilities",
+        accountType: "Expense",
+        subType: "Utilities",
+        weight: 0.05
+      }
+    ],
+    ratios: {
+      invoicedRevenueShare: 0.15,
+      cashSalesShare: 0.85,
+      formalBillShare: 0.75,
+      directExpenseShare: 0.25,
+      payrollShare: 0.5,
+      invoicePaymentRate: 0.98,
+      paymentDelayMinDays: 0,
+      paymentDelayMaxDays: 7,
+      partialPaymentRate: 0.05,
+      billPaymentRate: 0.95,
+      billPaymentDelayMinDays: 7,
+      billPaymentDelayMaxDays: 30,
+      creditMemoRate: 0.01,
+      refundReceiptRate: 0.01,
+      estimateRate: 0.15,
+      purchaseOrderRate: 0.2
+    }
+  },
+  manufacturing: {
+    name: "Manufacturing",
+    description:
+      "Small manufacturers selling to wholesale customers. 98% invoiced, materials and subcontractor bills.",
+    ratios: {
+      invoicedRevenueShare: 0.98,
+      cashSalesShare: 0.02,
+      formalBillShare: 0.95,
+      directExpenseShare: 0.05,
+      payrollShare: 0.3,
+      invoicePaymentRate: 0.9,
+      paymentDelayMinDays: 30,
+      paymentDelayMaxDays: 60,
+      partialPaymentRate: 0.1,
+      billPaymentRate: 0.92,
+      billPaymentDelayMinDays: 30,
+      billPaymentDelayMaxDays: 60,
+      creditMemoRate: 0.02,
+      refundReceiptRate: 0.005,
+      vendorCreditRate: 0.04,
+      estimateRate: 0.45,
+      purchaseOrderRate: 0.75,
+      monthlyDepreciationShare: 0.0125
+    },
+    serviceItems: [
+      {
+        suffix: "Wholesale-Products",
+        name: "Wholesale Product Sales",
+        accountType: "Income",
+        subType: "SalesOfProductIncome",
+        weight: 0.65
+      },
+      {
+        suffix: "Custom-Products",
+        name: "Custom Fabricated Products",
+        accountType: "Income",
+        subType: "SalesOfProductIncome",
+        weight: 0.25
+      },
+      {
+        suffix: "Assembly",
+        name: "Assembly Services",
+        accountType: "Income",
+        subType: "ServiceFeeIncome",
+        weight: 0.1
+      }
+    ],
+    expenseCategories: [
+      {
+        name: "Raw Materials",
+        accountType: "Expense",
+        subType: "SuppliesMaterials",
+        weight: 0.38
+      },
+      {
+        name: "Subcontracted Work",
+        accountType: "Expense",
+        subType: "OtherMiscServiceCost",
+        weight: 0.2
+      },
+      {
+        name: "Equipment Maintenance",
+        accountType: "Expense",
+        subType: "RepairMaintenance",
+        weight: 0.12
+      },
+      {
+        name: "Freight & Delivery",
+        accountType: "Expense",
+        subType: "Shipping",
+        weight: 0.08
+      },
+      {
+        name: "Equipment Rental",
+        accountType: "Expense",
+        subType: "EquipmentRental",
+        weight: 0.06
+      },
+      {
+        name: "Utilities",
+        accountType: "Expense",
+        subType: "Utilities",
+        weight: 0.05
+      },
+      {
+        name: "Factory Rent",
+        accountType: "Expense",
+        subType: "RentOrLeaseOfBuildings",
+        weight: 0.06
+      },
+      {
+        name: "Temporary Production Wages",
+        accountType: "Expense",
+        subType: "CostOfLaborCos",
+        weight: 0.03
+      },
+      {
+        name: "Insurance",
+        accountType: "Expense",
+        subType: "Insurance",
+        weight: 0.02
+      }
+    ]
   }
 };

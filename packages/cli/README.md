@@ -65,7 +65,7 @@ More offline commands:
 ```bash
 npx easytestdata plan --template restaurant --revenue 1.5M          # preview counts and totals
 npx easytestdata generate --seed 1 --start-date 2025-01-01 | jq .metrics   # JSON to stdout
-npx easytestdata templates                                          # 8 industry templates
+npx easytestdata templates                                          # 10 industry templates
 npx easytestdata scenarios                                          # 8 scenarios
 ```
 
@@ -113,7 +113,7 @@ companies. The only OAuth scope requested is `com.intuit.quickbooks.accounting`.
 | `generate`  | Write a dataset as JSON or CSV. No QBO connection needed.               |
 | `plan`      | Print counts, revenue, expenses and target profit. No QBO connection.   |
 | `templates` | List industry templates (`--inspect <name>` for details).               |
-| `scenarios` | List scenarios (`--inspect <name>` for details). Alias: `presets`.       |
+| `scenarios` | List scenarios (`--inspect <name>` for details). Alias: `presets`.      |
 | `auth`      | Browser OAuth for a sandbox company; saves a named connection.          |
 | `load`      | Generate and load into the sandbox (`--dry-run`, `--clear-first`).      |
 | `purge`     | Delete generated data (`--mode generated` or `all`, `--tag`, `-y`).     |

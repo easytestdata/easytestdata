@@ -7,6 +7,7 @@ import { App } from "./App";
 import { useAuth } from "./contexts/AuthContext";
 
 const adminPageRendered = vi.hoisted(() => vi.fn());
+const appConfig = vi.hoisted(() => ({ deployment: "cloud" as "cloud" | "local" }));
 
 vi.mock("./api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./api/client")>()),
@@ -27,7 +28,7 @@ vi.mock("./contexts/AppConfigContext", () => ({
   AppConfigProvider: ({ children }: { children: ReactNode }) => children,
   useAppConfig: () => ({
     loading: false,
-    deployment: "cloud",
+    deployment: appConfig.deployment,
     enabledOAuthProviders: ["google"],
     marketingUrl: "https://easytestdata.com"
   })
@@ -86,6 +87,7 @@ function adoptSessionFromOtherTab(session: api.AuthResponse) {
 
 describe("admin destinations with the real AuthProvider and AdminLayout", () => {
   beforeEach(() => {
+    appConfig.deployment = "cloud";
     api.logout();
     localStorage.clear();
     sessionStorage.clear();
@@ -111,6 +113,114 @@ describe("admin destinations with the real AuthProvider and AdminLayout", () => 
   });
 
   afterEach(() => cleanup());
+
+  it.each([SESSION.accessToken, "malformed-token"])(
+    "renders the local app after one profile request with a stale token (%s)",
+    async (accessToken) => {
+      appConfig.deployment = "local";
+      storeTokens({ ...SESSION, accessToken });
+      vi.mocked(api.getProfile)
+        // Leave any unexpected retry pending so a regression cannot hang the test runner.
+        .mockReturnValue(new Promise(() => {}))
+        .mockResolvedValueOnce({
+          id: "local-user",
+          email: "local@easytestdata.local",
+          display_name: "Local user",
+          avatar_url: null,
+          is_admin: false,
+          team_id: "local-team"
+        });
+
+      renderAt("/home");
+      expect(await screen.findByText("home-page")).toBeVisible();
+      expect(api.getProfile).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("auth-state")).toHaveTextContent('"userId":"local-user"');
+      expect(screen.getByTestId("auth-state")).toHaveTextContent('"profileLoading":false');
+      expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
+    }
+  );
+
+  it("ignores token events while the local profile is pending and after it settles", async () => {
+    appConfig.deployment = "local";
+    storeTokens(SESSION);
+    vi.mocked(api.getProfile).mockReturnValue(new Promise(() => {}));
+    const resolveProfile = deferProfile();
+    renderAt("/home");
+
+    const otherSession = {
+      ...SESSION,
+      accessToken: `header.${btoa(JSON.stringify({ sub: "other-user", teamId: "other-team" }))}.sig`
+    };
+    act(() => {
+      // Same subject, changed subject and cleared tokens must never invalidate the local request.
+      storeTokens(SESSION);
+      adoptSessionFromOtherTab(otherSession);
+      api.clearTokens();
+      adoptSessionFromOtherTab(SESSION);
+    });
+    expect(api.getProfile).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveProfile({
+        id: "local-user",
+        email: "local@easytestdata.local",
+        display_name: "Local user",
+        avatar_url: null,
+        is_admin: false,
+        team_id: "local-team"
+      });
+    });
+    expect(await screen.findByText("home-page")).toBeVisible();
+    const localAuthState = screen.getByTestId("auth-state").textContent;
+
+    act(() => {
+      storeTokens(SESSION);
+      adoptSessionFromOtherTab(otherSession);
+      api.clearTokens();
+    });
+    await act(async () => {});
+    expect(api.getProfile).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("auth-state").textContent).toBe(localAuthState);
+    expect(screen.getByTestId("auth-state")).toHaveTextContent('"profileLoading":false');
+  });
+
+  it("clears confirmed admin access when the replacement Cloud profile also mismatches", async () => {
+    const profile = {
+      id: SESSION.user.id,
+      email: SESSION.user.email,
+      display_name: SESSION.user.displayName,
+      avatar_url: null,
+      is_admin: true
+    };
+    storeTokens(SESSION);
+    vi.mocked(api.getProfile)
+      .mockReturnValue(new Promise(() => {}))
+      .mockResolvedValueOnce(profile);
+    renderAt("/home");
+    expect(await screen.findByRole("link", { name: "Admin" })).toBeVisible();
+
+    const resolveWrongProfile = deferProfile();
+    const resolveReplacement = deferProfile();
+    fireEvent.click(screen.getByRole("button", { name: "Switch team" }));
+    await waitFor(() => expect(api.getProfile).toHaveBeenCalledTimes(2));
+    const wrongProfile = { ...profile, id: "wrong-user" };
+    await act(async () => resolveWrongProfile(wrongProfile));
+    expect(api.getProfile).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole("link", { name: "Admin" })).toBeVisible();
+
+    act(() => {
+      window.history.pushState({}, "", "/admin/users");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await act(async () => resolveReplacement(wrongProfile));
+    expect(await screen.findByText("home-page")).toBeVisible();
+    expect(api.getProfile).toHaveBeenCalledTimes(3);
+    expect(screen.getByTestId("auth-state")).toHaveTextContent('"profileLoading":false');
+    expect(screen.getByTestId("auth-state")).toHaveTextContent('"isAdmin":false');
+    expect(screen.getByTestId("auth-state")).toHaveTextContent(`"userId":"${SESSION.user.id}"`);
+    expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
+    expect(adminPageRendered).not.toHaveBeenCalled();
+  });
 
   it.each([
     ["/home", "before"],

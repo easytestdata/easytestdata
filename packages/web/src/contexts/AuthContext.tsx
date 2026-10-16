@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useClearQueryCacheOnSessionChange(user?.id ?? null, teamId);
 
   /** Loads the profile of the account the current token belongs to into the session state. */
-  const loadProfile = useCallback((): Promise<void> => {
+  const loadProfile = useCallback((allowReplacement = true): Promise<void> => {
     const requestId = ++profileRequestId.current;
     setProfileLoading(true);
     // Keep confirmed permissions across team switches, but never carry them to another account.
@@ -114,12 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .getProfile()
       .then((profile) => {
         if (requestId !== profileRequestId.current) return;
-        const token = api.getAccessToken();
-        const currentUserId = readUserIdFromAccessToken(token);
-        // A response can outlive its token. Only tokenless local mode trusts the profile's id.
-        if ((token || deploymentRef.current !== "local") && profile.id !== currentUserId) {
-          // This is still the latest request; replace it so permissions can settle correctly.
-          if (currentUserId) return loadProfile();
+        const currentUserId = readUserIdFromAccessToken(api.getAccessToken());
+        // Local mode always trusts its built-in profile, even with a leftover Cloud token.
+        if (deploymentRef.current !== "local" && profile.id !== currentUserId) {
+          // A response can outlive its token. Replace it once, then settle without permissions
+          // if the server keeps returning a different account's profile.
+          if (currentUserId && allowReplacement) return loadProfile(false);
           profileUserId.current = null;
           setIsAdmin(false);
           return;
@@ -180,15 +180,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // by the API client (a refresh the server rejected, e.g. after "sign out everywhere") sign
   // out here too, so protected routes send the user to the login page. Tokens another tab stored
   // or cleared arrive here too (`fromOtherTab`); a signed-out tab then signs in as that account.
-  // Local mode has no tokens.
+  // Local mode ignores tokens left by a Cloud run on the same origin.
   const userIdRef = useRef<string | null>(null);
   userIdRef.current = user?.id ?? null;
   useEffect(() => {
     const onTokens = (event: Event) => {
+      if (deploymentRef.current === "local") return;
       const fromOtherTab = (event as CustomEvent).detail?.fromOtherTab === true;
       const token = api.getAccessToken();
       if (!token) {
-        if (deploymentRef.current === "local") return;
         tokenUserId.current = null;
         ++profileRequestId.current;
         profileUserId.current = null;

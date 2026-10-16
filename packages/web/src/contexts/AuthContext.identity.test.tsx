@@ -212,6 +212,23 @@ describe("AuthProvider profile permissions", () => {
     return resolve;
   }
 
+  it("finishes initialization after one retry when Cloud profiles keep mismatching", async () => {
+    const wrongProfile = { ...alice, id: "wrong-user", avatar_url: null };
+    vi.mocked(api.getProfile)
+      // Keep an unexpected third call pending instead of allowing an unbounded microtask loop.
+      .mockReturnValue(new Promise(() => {}))
+      .mockResolvedValueOnce(wrongProfile)
+      .mockResolvedValueOnce(wrongProfile);
+    const { result } = renderAuth();
+
+    await act(async () => {});
+    expect(api.getProfile).toHaveBeenCalledTimes(2);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.profileLoading).toBe(false);
+    expect(result.current.user).toBeNull();
+    expect(result.current.isAdmin).toBe(false);
+  });
+
   it("discards a profile for a different current token subject and loads the current account", async () => {
     const resolveAlice = deferProfile();
     const { result } = renderAuth();

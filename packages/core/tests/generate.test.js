@@ -196,8 +196,11 @@ describe("parseAmount", () => {
 });
 
 describe("realistic parties", () => {
-  it("names are realistic, unique across customers/vendors/employees and carry addresses", () => {
-    for (const { id } of listIndustryTemplates()) {
+  // One test per template: each builds a 300-customer plan, so a single loop over every template
+  // outgrew the 5 s test timeout on slower CI runners as templates were added.
+  it.each(listIndustryTemplates().map(({ id }) => id))(
+    "%s: names are realistic, unique across customers/vendors/employees and carry addresses",
+    (id) => {
       const plan = generate({ ...FIXED, template: id, customerCount: 300, employeeCount: 50 });
       const parties = [...plan.customers, ...plan.vendors, ...plan.employees, plan.payrollVendor];
       const names = parties.map((p) => p.name.toLowerCase());
@@ -213,7 +216,7 @@ describe("realistic parties", () => {
       expect(plan.employees[0].givenName).toBeTruthy();
       expect(plan.employees[0].familyName).toBeTruthy();
     }
-  });
+  );
 
   it("uses stable ids and transaction references by name", () => {
     const plan = generate(FIXED);

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +14,8 @@ vi.mock("./brand", async (importOriginal) => {
 const authState = vi.hoisted(() => ({
   user: null as null | { id: string; email: string; displayName: string; avatarUrl: null },
   loading: false,
-  isAdmin: false
+  isAdmin: false,
+  exchangeOAuthCode: vi.fn()
 }));
 
 const appConfig = vi.hoisted(() => ({
@@ -53,9 +54,12 @@ vi.mock("./contexts/AuthContext", () => ({
   AuthProvider: ({ children }: { children: ReactNode }) => children,
   useAuth: () => ({
     ...authState,
-    logout: vi.fn(),
-    exchangeOAuthCode: vi.fn()
+    logout: vi.fn()
   })
+}));
+
+vi.mock("@easytestdata/web-extensions", () => ({
+  default: { routes: [{ path: "/extension-report", element: () => <div>extension-page</div> }] }
 }));
 
 vi.mock("./components/Layout", () => ({
@@ -96,8 +100,10 @@ describe("App", () => {
   beforeEach(() => {
     authState.user = null;
     authState.isAdmin = false;
+    authState.exchangeOAuthCode.mockReset();
     appConfig.deployment = "cloud";
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -111,11 +117,46 @@ describe("App", () => {
     expect(await screen.findByText("EasyTestData")).toBeInTheDocument();
   });
 
+  it.each([
+    ["/settings/team?x=1#members", "settings-page"],
+    ["/extension-report?x=1#details", "extension-page"]
+  ])("returns to protected page %s after the OAuth exchange", async (destination, page) => {
+    const first = renderAt(destination);
+    await screen.findByText("Sign in");
+    expect(window.location.pathname).toBe("/login");
+    expect(new URLSearchParams(window.location.search).get("next")).toBe(destination);
+    first.unmount();
+
+    authState.exchangeOAuthCode.mockResolvedValue(undefined);
+    const returned = renderAt("/login?auth_code=oauth_abc");
+    await waitFor(() => expect(authState.exchangeOAuthCode).toHaveBeenCalledWith("oauth_abc"));
+    expect(screen.queryByText(page)).not.toBeInTheDocument();
+    const historyLength = window.history.length;
+    authState.user = { id: "u1", email: "a@b.c", displayName: "A", avatarUrl: null };
+    returned.rerender(<App />);
+
+    expect(await screen.findByText(page)).toBeInTheDocument();
+    expect(window.location.pathname + window.location.search + window.location.hash).toBe(
+      destination
+    );
+    expect(window.history.length).toBe(historyLength);
+    expect(sessionStorage.length).toBe(0);
+  });
+
   it("never sends a local-mode visitor to the sign-in page", async () => {
     appConfig.deployment = "local";
     renderAt("/home");
 
     expect(await screen.findByText(/Could not reach the local EasyTestData server/)).toBeVisible();
+    expect(window.location.pathname).toBe("/home");
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("still sends an already signed-in local login visitor home", async () => {
+    appConfig.deployment = "local";
+    authState.user = { id: "u1", email: "a@b.c", displayName: "A", avatarUrl: null };
+    renderAt("/login?next=%2Fsettings%2Fteam");
+    expect(await screen.findByText("home-page")).toBeInTheDocument();
     expect(window.location.pathname).toBe("/home");
   });
 

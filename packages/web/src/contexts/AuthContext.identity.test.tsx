@@ -1,7 +1,8 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as api from "../api/client";
 
 // A JWT-shaped token with the given claims (the provider only decodes the payload).
 function token(claims: Record<string, string>) {
@@ -43,6 +44,8 @@ const bob = {
   display_name: "Bob",
   is_admin: false
 };
+
+afterEach(() => cleanup());
 
 describe("AuthProvider in local mode", () => {
   beforeEach(() => {
@@ -175,5 +178,95 @@ describe("AuthProvider when another tab's tokens are adopted", () => {
     });
     await waitFor(() => expect(result.current.teamId).toBe("team-other"));
     expect(result.current.user?.id).toBe("alice");
+  });
+});
+
+describe("AuthProvider profile permissions", () => {
+  beforeEach(() => {
+    appConfig.loading = false;
+    appConfig.deployment = "cloud";
+    state.profiles = { alice, bob };
+    state.accessToken = token({ sub: "alice", teamId: "team-shared" });
+  });
+
+  function renderAuth() {
+    const queryClient = new QueryClient();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryClientProvider>
+    );
+    return renderHook(() => useAuth(), { wrapper });
+  }
+
+  function deferProfile() {
+    let resolve!: (profile: Awaited<ReturnType<typeof api.getProfile>>) => void;
+    const promise = new Promise<Awaited<ReturnType<typeof api.getProfile>>>((done) => {
+      resolve = done;
+    });
+    vi.mocked(api.getProfile).mockReturnValueOnce(promise);
+    return resolve;
+  }
+
+  it("hides the previous account's admin permission while the next profile is pending", async () => {
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isAdmin).toBe(true));
+
+    const resolveProfile = deferProfile();
+    act(() => {
+      state.accessToken = token({ sub: "bob", teamId: "team-shared" });
+      window.dispatchEvent(new CustomEvent(api.TOKENS_CHANGED_EVENT));
+    });
+    expect(result.current.profileLoading).toBe(true);
+    expect(result.current.isAdmin).toBe(false);
+
+    await act(async () => resolveProfile({ ...bob, avatar_url: null }));
+    expect(result.current.profileLoading).toBe(false);
+    expect(result.current.user?.id).toBe("bob");
+    expect(result.current.isAdmin).toBe(false);
+  });
+
+  it("ignores an older profile without ending the current permission load", async () => {
+    const resolveAlice = deferProfile();
+    const { result } = renderAuth();
+    expect(result.current.profileLoading).toBe(true);
+
+    const resolveBob = deferProfile();
+    act(() => {
+      state.accessToken = token({ sub: "bob", teamId: "team-shared" });
+      window.dispatchEvent(
+        new CustomEvent(api.TOKENS_CHANGED_EVENT, { detail: { fromOtherTab: true } })
+      );
+    });
+    await act(async () => resolveAlice({ ...alice, avatar_url: null }));
+    expect(result.current.profileLoading).toBe(true);
+    expect(result.current.user).toBeNull();
+    expect(result.current.isAdmin).toBe(false);
+
+    await act(async () => resolveBob({ ...bob, avatar_url: null }));
+    expect(result.current.profileLoading).toBe(false);
+    expect(result.current.user?.id).toBe("bob");
+    expect(result.current.isAdmin).toBe(false);
+  });
+
+  it("cannot restore admin permission when a pending profile finishes after logout", async () => {
+    const resolveProfile = deferProfile();
+    const { result } = renderAuth();
+    expect(result.current.profileLoading).toBe(true);
+    act(() => result.current.logout());
+    expect(result.current.profileLoading).toBe(false);
+
+    await act(async () => resolveProfile({ ...alice, avatar_url: null }));
+    expect(result.current.user).toBeNull();
+    expect(result.current.isAdmin).toBe(false);
+    expect(result.current.profileLoading).toBe(false);
+  });
+
+  it("settles a failed permission request without granting admin access", async () => {
+    vi.mocked(api.getProfile).mockRejectedValueOnce(new Error("Profile unavailable"));
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.profileLoading).toBe(false);
+    expect(result.current.isAdmin).toBe(false);
   });
 });

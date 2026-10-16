@@ -23,6 +23,8 @@ interface AuthState {
   user: User | null;
   teamId: string | null;
   loading: boolean;
+  /** The profile request has not settled; isAdmin is not a permission decision yet. */
+  profileLoading: boolean;
   isAdmin: boolean;
   logout: () => void;
   exchangeOAuthCode: (code: string) => Promise<void>;
@@ -88,33 +90,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const profileRequestId = useRef(0);
   const { deployment, loading: configLoading } = useAppConfig();
   useClearQueryCacheOnSessionChange(user?.id ?? null, teamId);
 
   /** Loads the profile of the account the current token belongs to into the session state. */
-  const loadProfile = useCallback(
-    () =>
-      api
-        .getProfile()
-        .then((profile) => {
-          setUser({
-            id: profile.id,
-            email: profile.email,
-            displayName: profile.display_name,
-            avatarUrl: profile.avatar_url
-          });
-          setIsAdmin(profile.is_admin === true);
-          // teamId is encoded in the JWT; local mode has no token, the profile carries it.
-          setTeamId(readTeamIdFromAccessToken(api.getAccessToken()) ?? profile.team_id ?? null);
-        })
-        .catch((error) => {
-          if (shouldClearSessionAfterProfileError(error)) {
-            api.logout();
-          }
-        }),
-    []
-  );
+  const loadProfile = useCallback(() => {
+    const requestId = ++profileRequestId.current;
+    setProfileLoading(true);
+    // Admin links and badges must not retain the previous account's permission while loading.
+    setIsAdmin(false);
+    return api
+      .getProfile()
+      .then((profile) => {
+        if (requestId !== profileRequestId.current) return;
+        setUser({
+          id: profile.id,
+          email: profile.email,
+          displayName: profile.display_name,
+          avatarUrl: profile.avatar_url
+        });
+        setIsAdmin(profile.is_admin === true);
+        // teamId is encoded in the JWT; local mode has no token, the profile carries it.
+        setTeamId(readTeamIdFromAccessToken(api.getAccessToken()) ?? profile.team_id ?? null);
+      })
+      .catch((error) => {
+        if (requestId === profileRequestId.current && shouldClearSessionAfterProfileError(error)) {
+          api.logout();
+        }
+      })
+      .finally(() => {
+        if (requestId === profileRequestId.current) setProfileLoading(false);
+      });
+  }, []);
 
   const initialized = useRef(false);
   useEffect(() => {
@@ -162,9 +172,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = api.getAccessToken();
       if (!token) {
         if (deploymentRef.current === "local") return;
+        ++profileRequestId.current;
         setUser(null);
         setTeamId(null);
         setIsAdmin(false);
+        setProfileLoading(false);
         setSentryUser(null);
         return;
       }
@@ -187,23 +199,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSentryUser({ id: user.id, email: user.email, teamId });
   }, [user, teamId]);
 
-  const handleAuthResponse = useCallback((data: api.AuthResponse) => {
-    setUser(data.user);
-    setTeamId(data.teamId);
-    // Sentry identification handled by the dedicated effect above
-    // Fetch profile to get is_admin (not included in auth response)
-    api
-      .getProfile()
-      .then((profile) => {
-        setIsAdmin(profile.is_admin === true);
-      })
-      .catch(() => {});
-  }, []);
+  const handleAuthResponse = useCallback(
+    (data: api.AuthResponse) => {
+      setUser(data.user);
+      setTeamId(data.teamId);
+      // Fetch profile to get is_admin (not included in auth response).
+      void loadProfile();
+    },
+    [loadProfile]
+  );
 
   const logoutFn = useCallback(() => {
     api.logout();
+    ++profileRequestId.current;
     setUser(null);
     setTeamId(null);
+    setIsAdmin(false);
+    setProfileLoading(false);
     setSentryUser(null);
   }, []);
 
@@ -229,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         teamId,
         loading,
+        profileLoading,
         isAdmin,
         logout: logoutFn,
         exchangeOAuthCode: exchangeOAuthCodeFn,

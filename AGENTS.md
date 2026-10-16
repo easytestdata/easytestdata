@@ -343,7 +343,11 @@ browser-bound, single-use state).
 `AuthContext.profileLoading` distinguishes a pending profile/permission request from a confirmed
 non-admin. `AdminLayout` waits for auth initialization and that request before redirecting or
 rendering admin pages; OAuth can establish the user before their permissions arrive. Admin links
-and badges stay hidden during profile loading because `isAdmin` is reset when the request starts.
+and badges retain the confirmed `isAdmin` while reloading the same account, including after a
+transient profile error. A different token subject or sign-out clears that permission immediately.
+Every token-subject transition invalidates pending profile requests, even when the rendered user
+has not changed yet. A Cloud profile response must match the current access token's subject;
+a mismatched response is discarded and the current account's profile is reloaded.
 
 **Important**: The `AuthProvider` init effect checks for `auth_code` in the URL and clears old tokens before fetching any profile. This prevents a race condition where stale session tokens could load the wrong user for an account that wasn't just authenticated.
 

@@ -93,19 +93,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const profileRequestId = useRef(0);
+  const profileUserId = useRef<string | null>(null);
+  const tokenUserId = useRef(readUserIdFromAccessToken(api.getAccessToken()));
   const { deployment, loading: configLoading } = useAppConfig();
+  const deploymentRef = useRef(deployment);
+  deploymentRef.current = deployment;
   useClearQueryCacheOnSessionChange(user?.id ?? null, teamId);
 
   /** Loads the profile of the account the current token belongs to into the session state. */
-  const loadProfile = useCallback(() => {
+  const loadProfile = useCallback((allowReplacement = true): Promise<void> => {
     const requestId = ++profileRequestId.current;
     setProfileLoading(true);
-    // Admin links and badges must not retain the previous account's permission while loading.
-    setIsAdmin(false);
+    // Keep confirmed permissions across team switches, but never carry them to another account.
+    // The token is current even when handleAuthResponse's setUser has not rendered yet.
+    if (readUserIdFromAccessToken(api.getAccessToken()) !== profileUserId.current) {
+      profileUserId.current = null;
+      setIsAdmin(false);
+    }
     return api
       .getProfile()
       .then((profile) => {
         if (requestId !== profileRequestId.current) return;
+        const currentUserId = readUserIdFromAccessToken(api.getAccessToken());
+        // Local mode always trusts its built-in profile, even with a leftover Cloud token.
+        if (deploymentRef.current !== "local" && profile.id !== currentUserId) {
+          // A response can outlive its token. Replace it once, then settle without permissions
+          // if the server keeps returning a different account's profile.
+          if (currentUserId && allowReplacement) return loadProfile(false);
+          profileUserId.current = null;
+          setIsAdmin(false);
+          return;
+        }
+        profileUserId.current = profile.id;
         setUser({
           id: profile.id,
           email: profile.email,
@@ -161,18 +180,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // by the API client (a refresh the server rejected, e.g. after "sign out everywhere") sign
   // out here too, so protected routes send the user to the login page. Tokens another tab stored
   // or cleared arrive here too (`fromOtherTab`); a signed-out tab then signs in as that account.
-  // Local mode has no tokens.
+  // Local mode ignores tokens left by a Cloud run on the same origin.
   const userIdRef = useRef<string | null>(null);
   userIdRef.current = user?.id ?? null;
-  const deploymentRef = useRef(deployment);
-  deploymentRef.current = deployment;
   useEffect(() => {
     const onTokens = (event: Event) => {
+      if (deploymentRef.current === "local") return;
       const fromOtherTab = (event as CustomEvent).detail?.fromOtherTab === true;
       const token = api.getAccessToken();
       if (!token) {
-        if (deploymentRef.current === "local") return;
+        tokenUserId.current = null;
         ++profileRequestId.current;
+        profileUserId.current = null;
         setUser(null);
         setTeamId(null);
         setIsAdmin(false);
@@ -181,8 +200,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       const nextUser = readUserIdFromAccessToken(token);
+      const subjectChanged = nextUser !== tokenUserId.current;
+      tokenUserId.current = nextUser;
+      if (subjectChanged) {
+        // The rendered user can still be A during A -> B -> A; track the token independently.
+        ++profileRequestId.current;
+        profileUserId.current = null;
+        setIsAdmin(false);
+        setProfileLoading(false);
+      }
       // Same tab, signed out: the sign-in flow sets the user itself.
-      if (nextUser && (userIdRef.current || fromOtherTab) && nextUser !== userIdRef.current) {
+      if (
+        nextUser &&
+        (userIdRef.current || fromOtherTab) &&
+        (subjectChanged || nextUser !== userIdRef.current)
+      ) {
         void loadProfile();
         return;
       }
@@ -212,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutFn = useCallback(() => {
     api.logout();
     ++profileRequestId.current;
+    profileUserId.current = null;
     setUser(null);
     setTeamId(null);
     setIsAdmin(false);

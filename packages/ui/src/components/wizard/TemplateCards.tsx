@@ -9,6 +9,8 @@ import {
   Hammer,
   Utensils,
   Cloud,
+  PawPrint,
+  Factory,
   Check,
   type LucideIcon
 } from "lucide-react";
@@ -23,7 +25,9 @@ export const TEMPLATE_ICONS: Record<string, LucideIcon> = {
   retail: ShoppingCart,
   healthcare: Stethoscope,
   nonprofit: HeartHandshake,
-  "real-estate": Building2
+  "real-estate": Building2,
+  "veterinary-clinic": PawPrint,
+  manufacturing: Factory
 };
 
 interface TemplateCardsProps {

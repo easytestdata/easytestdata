@@ -35,7 +35,7 @@ const csvTables = exportToCsv(plan); // { customers, invoices, invoice_lines, ..
 
 | Option                                        | Default                   | Notes                                                                                                                              |
 | --------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `template`                                    | `"professional-services"` | One of the 8 industry templates below. Unknown ids throw.                                                                          |
+| `template`                                    | `"professional-services"` | One of the 10 industry templates below. Unknown ids throw.                                                                         |
 | `preset`                                      | none                      | One of the 8 scenarios below. Unknown ids throw.                                                                                   |
 | `startDate`, `endDate`                        | see `months`              | `YYYY-MM-DD`.                                                                                                                      |
 | `months`                                      | `12`                      | Without dates: the full calendar months before today.                                                                              |
@@ -52,7 +52,7 @@ unknown or out-of-range values throw.
 
 ## Industry templates
 
-8 industry templates with their own service items, expense categories and financial ratios:
+10 industry templates with their own service items, expense categories and financial ratios:
 
 - `professional-services`: Consulting firms, agencies, law practices. 92% invoiced, 8% cash.
   Default template.
@@ -66,6 +66,10 @@ unknown or out-of-range values throw.
   delays.
 - `nonprofit`: Charitable organizations. Donations, grants, program fees, and program expenses.
 - `real-estate`: Property management. Rent, management fees, and late fees; 85% invoiced.
+- `veterinary-clinic`: Animal clinics with exams, surgery, medications, boarding and grooming.
+  85% cash sales.
+- `manufacturing`: Small manufacturers selling to wholesale customers. 98% invoiced, materials
+  and subcontractor bills.
 
 ## Scenarios
 

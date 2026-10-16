@@ -5,12 +5,12 @@
  * Returns { valid: true, template } on success or { valid: false, errors: [...] } on failure.
  */
 
+// QuickBooks Online AccountSubType enum values: https://static.developer.intuit.com/sdkdocs/qbv3doc/ipp-v3-java-devkit-javadoc/com/intuit/ipp/data/AccountSubTypeEnum.html
 const VALID_INCOME_SUBTYPES = [
   "ServiceFeeIncome",
   "SalesOfProductIncome",
   "OtherPrimaryIncome",
-  "NonProfitIncome",
-  "RentalIncome"
+  "NonProfitIncome"
 ];
 
 const VALID_EXPENSE_SUBTYPES = [
@@ -26,12 +26,13 @@ const VALID_EXPENSE_SUBTYPES = [
   "RepairMaintenance",
   "EquipmentRental",
   "Auto",
-  "CostOfLaborCos",
-  "OtherMiscServiceCost",
-  "Advertising",
+  "CostOfLabor",
+  "OtherMiscellaneousServiceCost",
+  "AdvertisingPromotional",
   "TravelMeals",
-  "Shipping",
-  "Stationery"
+  "ShippingFreightDelivery",
+  "InterestPaid",
+  "TaxesPaid"
 ];
 
 const VALID_RATIO_KEYS = [

@@ -31,7 +31,7 @@ EasyTestData generates books that behave like a real business:
 
 - **Financially coherent.** Invoices tie to payments, bills to bill payments, and revenue and
   target profit hit the numbers you set.
-- **Industry-specific.** 8 industry templates with their own service items, expense categories,
+- **Industry-specific.** 10 industry templates with their own service items, expense categories,
   and ratios, and 8 scenarios from a quick three-month demo to a fast-growing company and messy
   books full of credits and refunds.
 - **Realistic.** Locale-aware company names, contacts, and addresses, plus the messy parts:
@@ -152,16 +152,18 @@ workflow that seeds a sandbox before integration tests.
 `easytestdata templates` and `easytestdata scenarios` list the ids below (a scenario is the
 `--scenario` flag on the CLI), and `--inspect <id>` shows the details.
 
-| Template                | Description                                                                            |
-| ----------------------- | -------------------------------------------------------------------------------------- |
-| `professional-services` | Consulting firms, agencies, law practices. 92% invoiced, 8% cash. Default template.    |
-| `saas`                  | Software-as-a-service companies. Subscription and usage revenue, 95% invoiced.         |
-| `restaurant`            | Restaurants and food service. 85% cash sales, 32% of spend on food and ingredients.    |
-| `construction`          | General contractors. Estimates on 80% of jobs, purchase orders, 30-90 day collections. |
-| `retail`                | Brick-and-mortar and e-commerce stores. 80% cash sales, 45% cost of goods.             |
-| `healthcare`            | Medical practices and clinics. Patient and lab services, 30-90 day payment delays.     |
-| `nonprofit`             | Charitable organizations. Donations, grants, program fees, and program expenses.       |
-| `real-estate`           | Property management. Rent, management fees, and late fees; 85% invoiced.               |
+| Template                | Description                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `professional-services` | Consulting firms, agencies, law practices. 92% invoiced, 8% cash. Default template.                  |
+| `saas`                  | Software-as-a-service companies. Subscription and usage revenue, 95% invoiced.                       |
+| `restaurant`            | Restaurants and food service. 85% cash sales, 32% of spend on food and ingredients.                  |
+| `construction`          | General contractors. Estimates on 80% of jobs, purchase orders, 30-90 day collections.               |
+| `retail`                | Brick-and-mortar and e-commerce stores. 80% cash sales, 45% cost of goods.                           |
+| `healthcare`            | Medical practices and clinics. Patient and lab services, 30-90 day payment delays.                   |
+| `nonprofit`             | Charitable organizations. Donations, grants, program fees, and program expenses.                     |
+| `real-estate`           | Property management. Rent, management fees, and late fees; 85% invoiced.                             |
+| `veterinary-clinic`     | Animal clinics with exams, surgery, medications, boarding and grooming. 85% cash sales.              |
+| `manufacturing`         | Small manufacturers selling to wholesale customers. 98% invoiced, materials and subcontractor bills. |
 
 | Scenario          | What you get                                                        |
 | ----------------- | ------------------------------------------------------------------- |

@@ -81,5 +81,15 @@ export const INDUSTRY_NOUNS = {
     customers: "Dental|Coffee Co|Fitness|Law Office|Bakery|Pharmacy|Insurance|Salon",
     vendors:
       "Property Maintenance|Landscaping|Janitorial|HVAC|Plumbing|Security Services|Elevator Services|Roofing"
+  },
+  "veterinary-clinic": {
+    customers: "Kennels|Animal Rescue|Pet Hotel|Stables|Dog Training|Farms|Animal Shelter|Pet Spa",
+    vendors:
+      "Veterinary Supply|Animal Health|Laboratories|Pharmaceuticals|Pet Nutrition|Imaging|Surgical Supply|Linen Service"
+  },
+  manufacturing: {
+    customers:
+      "Distributors|Industrial Supply|Wholesale|Hardware|Equipment Co|Contractors Supply|Fabrication|Assembly",
+    vendors: "Steel|Metals|Plastics|Machining|Tooling|Packaging|Freight|Industrial Gases"
   }
 };

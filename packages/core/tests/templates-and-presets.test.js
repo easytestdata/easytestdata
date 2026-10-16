@@ -10,8 +10,15 @@ import {
   resolveConfig,
   scenarioPresets
 } from "../src/index.js";
+import { validateTemplate } from "../src/templates/schema.js";
 
 describe("template and preset registries", () => {
+  it.each(Object.entries(industryTemplates))("validates built-in template %s", (_id, template) => {
+    const result = validateTemplate(template);
+    expect(result.errors ?? []).toEqual([]);
+    expect(result.valid).toBe(true);
+  });
+
   it("lists every registered industry template and scenario preset", () => {
     const templates = listIndustryTemplates();
     const presets = listScenarioPresets();

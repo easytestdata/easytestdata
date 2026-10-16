@@ -45,7 +45,10 @@ const bob = {
   is_admin: false
 };
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.mocked(api.getProfile).mockReset();
+});
 
 describe("AuthProvider in local mode", () => {
   beforeEach(() => {
@@ -80,6 +83,7 @@ describe("AuthProvider in local mode", () => {
     expect(result.current.user?.id).toBe("local-user");
     expect(result.current.teamId).toBe("local-team");
     expect(result.current.isAdmin).toBe(false);
+    expect(result.current.profileLoading).toBe(false);
 
     // Local mode never has tokens: a tokens-changed event does not sign the built-in user out.
     act(() => {
@@ -207,6 +211,40 @@ describe("AuthProvider profile permissions", () => {
     vi.mocked(api.getProfile).mockReturnValueOnce(promise);
     return resolve;
   }
+
+  it("discards a profile for a different current token subject and loads the current account", async () => {
+    const resolveAlice = deferProfile();
+    const { result } = renderAuth();
+    expect(result.current.profileLoading).toBe(true);
+
+    // Check the token at response time even if no token event invalidated this request.
+    state.accessToken = token({ sub: "bob", teamId: "team-bob" });
+    const resolveBob = deferProfile();
+    await act(async () => resolveAlice({ ...alice, avatar_url: null }));
+    expect(result.current.user).toBeNull();
+    expect(result.current.isAdmin).toBe(false);
+    expect(result.current.profileLoading).toBe(true);
+
+    await act(async () => resolveBob({ ...bob, avatar_url: null }));
+    expect(result.current.user?.id).toBe("bob");
+    expect(result.current.teamId).toBe("team-bob");
+    expect(result.current.isAdmin).toBe(false);
+    expect(result.current.profileLoading).toBe(false);
+  });
+
+  it.each(["", token({ teamId: "team-shared" })])(
+    "discards a Cloud profile when the current token has no subject (%j)",
+    async (accessToken) => {
+      const resolveProfile = deferProfile();
+      const { result } = renderAuth();
+      state.accessToken = accessToken;
+
+      await act(async () => resolveProfile({ ...alice, avatar_url: null }));
+      expect(result.current.user).toBeNull();
+      expect(result.current.isAdmin).toBe(false);
+      expect(result.current.profileLoading).toBe(false);
+    }
+  );
 
   it("hides the previous account's admin permission while the next profile is pending", async () => {
     const { result } = renderAuth();

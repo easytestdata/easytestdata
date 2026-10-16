@@ -6,6 +6,8 @@ import * as api from "./api/client";
 import { App } from "./App";
 import { useAuth } from "./contexts/AuthContext";
 
+const adminPageRendered = vi.hoisted(() => vi.fn());
+
 vi.mock("./api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./api/client")>()),
   exchangeOAuthCode: vi.fn(),
@@ -33,10 +35,13 @@ vi.mock("./contexts/AppConfigContext", () => ({
 
 vi.mock("./pages/HomePage", () => ({
   HomePage: () => {
-    const { switchTeam, exchangeOAuthCode } = useAuth();
+    const { switchTeam, exchangeOAuthCode, user, teamId, isAdmin, profileLoading } = useAuth();
     return (
       <>
         <div>home-page</div>
+        <div data-testid="auth-state">
+          {JSON.stringify({ userId: user?.id, teamId, isAdmin, profileLoading })}
+        </div>
         <button onClick={() => void switchTeam("team-2")}>Switch team</button>
         <button onClick={() => void exchangeOAuthCode("other-account")}>Change account</button>
       </>
@@ -44,7 +49,10 @@ vi.mock("./pages/HomePage", () => ({
   }
 }));
 vi.mock("./pages/admin/UserManagementPage", () => ({
-  UserManagementPage: () => <div>admin-users-page</div>
+  UserManagementPage: () => {
+    adminPageRendered(api.getAccessToken());
+    return <div>admin-users-page</div>;
+  }
 }));
 
 const SESSION: api.AuthResponse = {
@@ -60,6 +68,22 @@ function renderAt(path: string) {
   return render(<App />);
 }
 
+function deferProfile() {
+  let resolve!: (profile: Awaited<ReturnType<typeof api.getProfile>>) => void;
+  vi.mocked(api.getProfile).mockReturnValueOnce(
+    new Promise((done) => {
+      resolve = done;
+    })
+  );
+  return resolve;
+}
+
+function adoptSessionFromOtherTab(session: api.AuthResponse) {
+  localStorage.setItem("accessToken", session.accessToken);
+  localStorage.setItem("refreshToken", session.refreshToken);
+  window.dispatchEvent(new StorageEvent("storage", { key: "accessToken" }));
+}
+
 describe("admin destinations with the real AuthProvider and AdminLayout", () => {
   beforeEach(() => {
     api.logout();
@@ -68,7 +92,10 @@ describe("admin destinations with the real AuthProvider and AdminLayout", () => 
     vi.mocked(api.getProfile).mockReset();
     vi.mocked(api.exchangeOAuthCode).mockReset();
     vi.mocked(api.switchTeam).mockReset();
+    adminPageRendered.mockClear();
     vi.mocked(api.exchangeOAuthCode).mockImplementation(async () => {
+      // The real exchange awaits HTTP before storing tokens, after provider initialization.
+      await Promise.resolve();
       storeTokens(SESSION);
       return SESSION;
     });
@@ -84,6 +111,125 @@ describe("admin destinations with the real AuthProvider and AdminLayout", () => 
   });
 
   afterEach(() => cleanup());
+
+  it.each([
+    ["/home", "before"],
+    ["/home", "after"],
+    ["/admin/users", "before"],
+    ["/admin/users", "after"]
+  ])(
+    "rejects B's admin profile at %s when A's token returns and B settles %s A",
+    async (destination, settlementOrder) => {
+      const profileA = {
+        id: SESSION.user.id,
+        email: SESSION.user.email,
+        display_name: SESSION.user.displayName,
+        avatar_url: null,
+        is_admin: false
+      };
+      const settledStateA = JSON.stringify({
+        userId: SESSION.user.id,
+        teamId: SESSION.teamId,
+        isAdmin: false,
+        profileLoading: false
+      });
+      storeTokens(SESSION);
+      vi.mocked(api.getProfile).mockResolvedValueOnce(profileA);
+      renderAt("/home");
+      await screen.findByText("home-page");
+      expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
+
+      const sessionB: api.AuthResponse = {
+        ...SESSION,
+        user: { ...SESSION.user, id: "user-2", displayName: "Admin B" },
+        accessToken: `header.${btoa(JSON.stringify({ sub: "user-2", teamId: SESSION.teamId }))}.sig`
+      };
+      const resolveB = deferProfile();
+      act(() => adoptSessionFromOtherTab(sessionB));
+      expect(api.getProfile).toHaveBeenCalledTimes(2);
+      // B has not supplied a profile, so the rendered user is still confirmed non-admin A.
+      expect(screen.getByTestId("auth-state")).toHaveTextContent(
+        JSON.stringify({
+          userId: SESSION.user.id,
+          teamId: SESSION.teamId,
+          isAdmin: false,
+          profileLoading: true
+        })
+      );
+
+      const resolveA = deferProfile();
+      act(() => {
+        adoptSessionFromOtherTab(SESSION);
+        window.history.pushState({}, "", destination);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+      expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
+      expect(screen.queryByText("admin-users-page")).not.toBeInTheDocument();
+
+      const finishB = async () => {
+        await act(async () => {
+          resolveB({ ...profileA, id: sessionB.user.id, is_admin: true });
+        });
+        expect(api.getAccessToken()).toBe(SESSION.accessToken);
+        expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
+        expect(screen.queryByText("admin-users-page")).not.toBeInTheDocument();
+        expect(adminPageRendered).not.toHaveBeenCalled();
+      };
+      if (settlementOrder === "before") {
+        await finishB();
+        // A's replacement request must still be pending after the stale request settles.
+        expect(window.location.pathname).toBe(destination);
+        if (destination === "/home") {
+          expect(screen.getByTestId("auth-state")).toHaveTextContent('"profileLoading":true');
+        }
+      }
+      await act(async () => resolveA(profileA));
+      await waitFor(() => {
+        expect(screen.getByTestId("auth-state")).toHaveTextContent(settledStateA);
+      });
+      if (settlementOrder === "after") await finishB();
+
+      expect(api.getProfile).toHaveBeenCalledTimes(3);
+      expect(window.location.pathname).toBe("/home");
+      expect(screen.getByTestId("auth-state")).toHaveTextContent(settledStateA);
+      expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
+      expect(adminPageRendered).not.toHaveBeenCalled();
+    }
+  );
+
+  it("keeps the current account's confirmed admin permission while replacing a mismatched profile", async () => {
+    const profileA = {
+      id: SESSION.user.id,
+      email: SESSION.user.email,
+      display_name: SESSION.user.displayName,
+      avatar_url: null,
+      is_admin: true
+    };
+    storeTokens(SESSION);
+    vi.mocked(api.getProfile).mockResolvedValueOnce(profileA);
+    renderAt("/home");
+    expect(await screen.findByRole("link", { name: "Admin" })).toBeVisible();
+
+    const resolveWrongProfile = deferProfile();
+    const resolveCurrentProfile = deferProfile();
+    fireEvent.click(screen.getByRole("button", { name: "Switch team" }));
+    await waitFor(() => expect(api.getProfile).toHaveBeenCalledTimes(2));
+    await act(async () => resolveWrongProfile({ ...profileA, id: "user-2", is_admin: false }));
+    expect(screen.getByRole("link", { name: "Admin" })).toBeVisible();
+    expect(screen.getByTestId("auth-state")).toHaveTextContent(
+      JSON.stringify({
+        userId: SESSION.user.id,
+        teamId: "team-2",
+        isAdmin: true,
+        profileLoading: true
+      })
+    );
+
+    await act(async () => resolveCurrentProfile(profileA));
+    expect(api.getProfile).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole("link", { name: "Admin" })).toBeVisible();
+    expect(screen.getByTestId("auth-state")).toHaveTextContent('"profileLoading":false');
+  });
 
   it.each([
     new api.ApiError("Profile unavailable", 503, {}),

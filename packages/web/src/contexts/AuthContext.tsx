@@ -94,11 +94,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const profileRequestId = useRef(0);
   const profileUserId = useRef<string | null>(null);
+  const tokenUserId = useRef(readUserIdFromAccessToken(api.getAccessToken()));
   const { deployment, loading: configLoading } = useAppConfig();
+  const deploymentRef = useRef(deployment);
+  deploymentRef.current = deployment;
   useClearQueryCacheOnSessionChange(user?.id ?? null, teamId);
 
   /** Loads the profile of the account the current token belongs to into the session state. */
-  const loadProfile = useCallback(() => {
+  const loadProfile = useCallback((): Promise<void> => {
     const requestId = ++profileRequestId.current;
     setProfileLoading(true);
     // Keep confirmed permissions across team switches, but never carry them to another account.
@@ -111,6 +114,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .getProfile()
       .then((profile) => {
         if (requestId !== profileRequestId.current) return;
+        const token = api.getAccessToken();
+        const currentUserId = readUserIdFromAccessToken(token);
+        // A response can outlive its token. Only tokenless local mode trusts the profile's id.
+        if ((token || deploymentRef.current !== "local") && profile.id !== currentUserId) {
+          // This is still the latest request; replace it so permissions can settle correctly.
+          if (currentUserId) return loadProfile();
+          profileUserId.current = null;
+          setIsAdmin(false);
+          return;
+        }
         profileUserId.current = profile.id;
         setUser({
           id: profile.id,
@@ -170,14 +183,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Local mode has no tokens.
   const userIdRef = useRef<string | null>(null);
   userIdRef.current = user?.id ?? null;
-  const deploymentRef = useRef(deployment);
-  deploymentRef.current = deployment;
   useEffect(() => {
     const onTokens = (event: Event) => {
       const fromOtherTab = (event as CustomEvent).detail?.fromOtherTab === true;
       const token = api.getAccessToken();
       if (!token) {
         if (deploymentRef.current === "local") return;
+        tokenUserId.current = null;
         ++profileRequestId.current;
         profileUserId.current = null;
         setUser(null);
@@ -188,8 +200,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       const nextUser = readUserIdFromAccessToken(token);
+      const subjectChanged = nextUser !== tokenUserId.current;
+      tokenUserId.current = nextUser;
+      if (subjectChanged) {
+        // The rendered user can still be A during A -> B -> A; track the token independently.
+        ++profileRequestId.current;
+        profileUserId.current = null;
+        setIsAdmin(false);
+        setProfileLoading(false);
+      }
       // Same tab, signed out: the sign-in flow sets the user itself.
-      if (nextUser && (userIdRef.current || fromOtherTab) && nextUser !== userIdRef.current) {
+      if (
+        nextUser &&
+        (userIdRef.current || fromOtherTab) &&
+        (subjectChanged || nextUser !== userIdRef.current)
+      ) {
         void loadProfile();
         return;
       }

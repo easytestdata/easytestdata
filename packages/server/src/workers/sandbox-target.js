@@ -17,11 +17,14 @@ function endpoint(entity) {
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
 /**
+ * Returns { target, close }.
  * The only way an extension job writes to QuickBooks: a frozen object over a locked,
  * sandbox-only QboClient (buildLockedQboClient), built by the job runner inside the job's
  * connection lock and bound to the job's signal. It reaches only that sandbox.
  */
 export function createSandboxTarget(client, { signal, onUse = () => {} } = {}) {
+  let closed = false;
+  const inFlight = new Set();
   const numbered = (items) => items.map((item, index) => ({ ...item, originalIndex: index }));
   const methods = {
     query: (sql) => client.query(sql),
@@ -72,15 +75,30 @@ export function createSandboxTarget(client, { signal, onUse = () => {} } = {}) {
       }),
     clearSandbox: ({ onProgress } = {}) => clearSandbox(client, { emit: onProgress, signal })
   };
-  // Every call reports that the sandbox was used (the runner stamps connection activity then).
+  // Every call reports that the sandbox was used (the runner stamps connection activity then)
+  // and is tracked, so the runner can wait for calls still running before it releases the lock.
+  // Once the job's handler has ended the target refuses further calls.
   const used = Object.fromEntries(
     Object.entries(methods).map(([name, fn]) => [
       name,
       (...args) => {
+        if (closed) {
+          return Promise.reject(new Error("This job has ended; its sandbox can't be used now."));
+        }
         onUse();
-        return fn(...args);
+        const call = Promise.resolve().then(() => fn(...args));
+        inFlight.add(call);
+        const settle = () => inFlight.delete(call);
+        call.then(settle, settle);
+        return call;
       }
     ])
   );
-  return Object.freeze({ realmId: client.cfg.qboRealmId, ...used });
+  const target = Object.freeze({ realmId: client.cfg.qboRealmId, ...used });
+  /** Refuses further calls and resolves once the ones already started have settled. */
+  async function close() {
+    closed = true;
+    while (inFlight.size > 0) await Promise.allSettled([...inFlight]);
+  }
+  return { target, close };
 }

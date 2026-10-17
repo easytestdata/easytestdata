@@ -304,12 +304,12 @@ handler's `timeoutMinutes` (read before the timer starts). It claims the row, an
 (`workers/sandbox-target.js`): a frozen object over `buildLockedQboClient(conn, credentials,
 { signal, minorVersion: "75" })` with `realmId, query, read, create, update, remove,
 batchCreate, batchUpdate, upload, report, preferences, updatePreferences, removeRecurring,
-clearSandbox`. It reaches only that sandbox and is the only way an extension writes to QuickBooks.
+clearSandbox`. It reaches only that sandbox and is the only way an extension writes to QuickBooks. Once the handler ends, the target refuses further calls, and calls still running finish before the connection lock is released.
 Then `run(ctx)` with a frozen `ctx = { jobId, teamId, createdBy, config (the payload), signal,
 progress(step, totalSteps, message), target }` (`target` is `null` without `needsSandbox`).
 Outcome: resolving `{ result, entityCount }` completes the job; a throw fails it with an
 `AppError`'s message (any other error is logged and shown as "The job failed. See the server log
-for details.") and keeps the error's `result`; a cancel ends it `cancelled` with that `result`; a
+for details.") and keeps the error's `result`; a cancel (also one requested but not yet seen by the cancel watcher when an error arrives) ends it `cancelled` with that `result`; a
 row naming no registered handler fails with "This server cannot run this job (missing extension
 <name>/<kind>)."
 

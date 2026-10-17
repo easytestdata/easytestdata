@@ -392,6 +392,7 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
   let lock = null;
   let started = false;
   let targetUsed = false;
+  let closeTarget = async () => {};
   try {
     let target = null;
     if (handler.needsSandbox) {
@@ -415,7 +416,10 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
         signal,
         minorVersion: "75"
       });
-      target = createSandboxTarget(client, { signal, onUse: () => (targetUsed = true) });
+      ({ target, close: closeTarget } = createSandboxTarget(client, {
+        signal,
+        onUse: () => (targetUsed = true)
+      }));
     }
 
     const ctx = Object.freeze({
@@ -472,7 +476,14 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
     }
   } catch (err) {
     const partial = resultJson(err?.result, jobId);
-    if (isCancelled(signal)) {
+    // A cancel the watcher has not seen yet still wins over the error.
+    const cancelRequested =
+      isCancelled(signal) ||
+      (await query("SELECT status FROM jobs WHERE id = $1", [jobId]).then(
+        (r) => r.rows[0]?.status === "cancelling",
+        () => false
+      ));
+    if (cancelRequested) {
       await markExtensionCancelled(jobId, partial);
       return;
     }
@@ -487,6 +498,9 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
     }
     await markJobFailed(jobId, message, { result: partial, upgradeTimedOut: partial !== null });
   } finally {
+    // No call outlives the job: the target refuses new ones and calls still running finish
+    // before the lock is released.
+    await closeTarget();
     // A job that really talked to the sandbox counts as connection activity (the token
     // keepalive and health read last_used_at), whether it then succeeded or not.
     if (targetUsed) {

@@ -470,6 +470,50 @@ describe("extension jobs on PGlite", () => {
     });
   });
 
+  it("refuses calls on a job's target once its handler has ended", async () => {
+    vi.spyOn(QboClient.prototype, "request").mockResolvedValue({ QueryResponse: {} });
+    let kept;
+    register({
+      copy: {
+        needsSandbox: true,
+        run: async (ctx) => {
+          kept = ctx.target;
+          return { result: {} };
+        }
+      }
+    });
+    const team = await createTeam("kepttarget");
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    });
+    await run(id);
+    await expect(kept.query("select * from Customer")).rejects.toThrow(
+      "This job has ended; its sandbox can't be used now."
+    );
+  });
+
+  it("ends a job cancelled just before its handler failed as cancelled, not failed", async () => {
+    let teamId;
+    register({
+      copy: {
+        needsSandbox: false,
+        run: async (ctx) => {
+          await api.cancelExtensionJob(teamId, ctx.jobId);
+          throw new AppError(409, "X", "Failed right after the cancel.");
+        }
+      }
+    });
+    const team = await createTeam("cancelrace");
+    teamId = team.teamId;
+    const { id } = await api.enqueueExtensionJob({ teamId, extension: "demo", kind: "copy" });
+    // The cancel watcher polls slowly here, so the signal is not aborted when the error arrives.
+    await run(id, { cancelPollMs: 60_000 });
+    expect((await job(id)).status).toBe("cancelled");
+  });
+
   it("fails a row whose handler is not registered", async () => {
     register({});
     const team = await createTeam("missing");
@@ -521,12 +565,14 @@ describe("extension jobs on PGlite", () => {
       return { QueryResponse: {} };
     });
     let target;
+    let invalid;
     register({
       copy: {
         needsSandbox: true,
         run: async (ctx) => {
           target = ctx.target;
           await ctx.target.query("select * from Customer");
+          invalid = await ctx.target.create("../admin", {}).catch((error) => error);
           return { result: {} };
         }
       }
@@ -568,7 +614,7 @@ describe("extension jobs on PGlite", () => {
         minor: "75"
       }
     ]);
-    expect(() => target.create("../admin", {})).toThrow(/Invalid QuickBooks entity/);
+    expect(invalid.message).toMatch(/Invalid QuickBooks entity/);
   });
 
   it("fails a needsSandbox job without a connection before calling the handler", async () => {

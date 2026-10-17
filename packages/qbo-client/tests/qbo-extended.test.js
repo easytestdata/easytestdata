@@ -259,9 +259,9 @@ describe("batchCreate failure accumulation", () => {
     expect(result.count).toBe(3);
     expect(result.results).toHaveLength(3);
     expect(result.failures).toHaveLength(2);
-    expect(result.failures[0].message).toContain("Duplicate DocNumber");
+    expect(result.failures[0].message).toBe("Duplicate DocNumber: INV-001 already exists");
     expect(result.failures[0].ref).toBe("INV-1");
-    expect(result.failures[1].message).toContain("Validation error");
+    expect(result.failures[1].message).toBe("Validation error");
     expect(result.failures[1].ref).toBe("INV-3");
   });
 });

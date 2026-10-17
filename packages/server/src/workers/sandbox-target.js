@@ -24,6 +24,9 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
  */
 export function createSandboxTarget(client, { signal, onUse = () => {} } = {}) {
   let closed = false;
+  // The sandbox counts as used only when a request is really sent: not for a call refused
+  // first (an invalid entity name, or one made after the job was stopped).
+  client.onRequestSent = onUse;
   const inFlight = new Set();
   const numbered = (items) => items.map((item, index) => ({ ...item, originalIndex: index }));
   const methods = {
@@ -75,9 +78,8 @@ export function createSandboxTarget(client, { signal, onUse = () => {} } = {}) {
       }),
     clearSandbox: ({ onProgress } = {}) => clearSandbox(client, { emit: onProgress, signal })
   };
-  // Every call reports that the sandbox was used (the runner stamps connection activity then)
-  // and is tracked, so the runner can wait for calls still running before it releases the lock.
-  // Once the job's handler has ended the target refuses further calls.
+  // Every call is tracked, so the runner can wait for calls still running before it releases the
+  // lock. Once the job's handler has ended the target refuses further calls.
   const used = Object.fromEntries(
     Object.entries(methods).map(([name, fn]) => [
       name,
@@ -85,7 +87,6 @@ export function createSandboxTarget(client, { signal, onUse = () => {} } = {}) {
         if (closed) {
           return Promise.reject(new Error("This job has ended; its sandbox can't be used now."));
         }
-        onUse();
         const call = Promise.resolve().then(() => fn(...args));
         inFlight.add(call);
         const settle = () => inFlight.delete(call);

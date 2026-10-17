@@ -118,4 +118,26 @@ describe("QboClient token refresh callback", () => {
       expect.objectContaining({ timeout: TEST_QBO_HTTP_TIMEOUT_MS })
     );
   });
+
+  it("calls onRequestSent just before a request is sent, never for one refused first", async () => {
+    axios.request.mockReset();
+    const order = [];
+    axios.request.mockImplementation(async () => {
+      order.push("sent");
+      return { data: {} };
+    });
+    const controller = new AbortController();
+    const client = new QboClient({
+      qboAccessToken: "access-token",
+      qboRefreshToken: "refresh-token",
+      qboRealmId: "123456",
+      signal: controller.signal,
+      onRequestSent: () => order.push("onRequestSent")
+    });
+    await client.request("GET", "/preferences");
+    expect(order).toEqual(["onRequestSent", "sent"]);
+    controller.abort();
+    await expect(client.request("GET", "/preferences")).rejects.toThrow();
+    expect(order).toEqual(["onRequestSent", "sent"]);
+  });
 });

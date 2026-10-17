@@ -387,7 +387,8 @@ describe("extension jobs on PGlite", () => {
           throw Object.assign(new AppError(400, "X", "Broken."), { result: { big: 10n } });
         }
       },
-      badok: { needsSandbox: false, run: async () => ({ result: { big: 10n } }) }
+      badok: { needsSandbox: false, run: async () => ({ result: { big: 10n } }) },
+      nothing: { needsSandbox: false, run: async () => ({ result: () => {} }) }
     });
     await run(failing.id);
     expect(await job(failing.id)).toMatchObject({
@@ -402,6 +403,17 @@ describe("extension jobs on PGlite", () => {
     });
     await run(ok.id);
     expect(await job(ok.id)).toMatchObject({
+      status: "completed",
+      result: { resultError: "The job's result could not be saved." }
+    });
+    // A function serializes to nothing rather than throwing.
+    const empty = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      extension: "demo",
+      kind: "nothing"
+    });
+    await run(empty.id);
+    expect(await job(empty.id)).toMatchObject({
       status: "completed",
       result: { resultError: "The job's result could not be saved." }
     });
@@ -425,7 +437,11 @@ describe("extension jobs on PGlite", () => {
   });
 
   it("stamps sandbox activity even when the handler fails after using it", async () => {
-    vi.spyOn(QboClient.prototype, "request").mockResolvedValue({ QueryResponse: {} });
+    // Stands in for a request really sent: the client reports it before the HTTP call.
+    vi.spyOn(QboClient.prototype, "request").mockImplementation(async function () {
+      this.onRequestSent?.();
+      return { QueryResponse: {} };
+    });
     register({
       copy: {
         needsSandbox: true,
@@ -448,6 +464,94 @@ describe("extension jobs on PGlite", () => {
       team.connectionId
     ]);
     expect(conn.rows[0].last_used_at).not.toBeNull();
+  });
+
+  it("counts no sandbox activity for a call refused before anything is sent", async () => {
+    const request = vi.spyOn(QboClient.prototype, "request");
+    register({
+      copy: {
+        needsSandbox: true,
+        run: async (ctx) => {
+          await expect(ctx.target.create("Not An Entity", {})).rejects.toThrow(
+            "Invalid QuickBooks entity"
+          );
+          return { result: {} };
+        }
+      }
+    });
+    const team = await createTeam("refusedcall");
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    });
+    await run(id);
+    expect((await job(id)).status).toBe("completed");
+    expect(request).not.toHaveBeenCalled();
+    const conn = await db.query("SELECT last_used_at FROM qbo_connections WHERE id = $1", [
+      team.connectionId
+    ]);
+    expect(conn.rows[0].last_used_at).toBeNull();
+  });
+
+  it("counts no sandbox activity for a call made after the job was cancelled", async () => {
+    vi.spyOn(QboClient.prototype, "request").mockRejectedValue(new Error("cancelled"));
+    let teamId;
+    register({
+      copy: {
+        needsSandbox: true,
+        run: async (ctx) => {
+          await api.cancelExtensionJob(teamId, ctx.jobId);
+          while (!ctx.signal.aborted) await tick(5);
+          await ctx.target.query("select * from Customer").catch(() => {});
+          return { result: {} };
+        }
+      }
+    });
+    const team = await createTeam("callaftercancel");
+    teamId = team.teamId;
+    const { id } = await api.enqueueExtensionJob({
+      teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    });
+    await run(id);
+    expect((await job(id)).status).toBe("cancelled");
+    const conn = await db.query("SELECT last_used_at FROM qbo_connections WHERE id = $1", [
+      team.connectionId
+    ]);
+    expect(conn.rows[0].last_used_at).toBeNull();
+  });
+
+  it("lets a call the handler left running finish before the job is ended", async () => {
+    let id;
+    let statusDuringCall;
+    vi.spyOn(QboClient.prototype, "request").mockImplementation(async () => {
+      await tick(50);
+      statusDuringCall = (await job(id)).status;
+      return { QueryResponse: {} };
+    });
+    register({
+      copy: {
+        needsSandbox: true,
+        run: async (ctx) => {
+          ctx.target.query("select * from Customer"); // not awaited
+          return { result: {} };
+        }
+      }
+    });
+    const team = await createTeam("leftrunning");
+    ({ id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    }));
+    await run(id);
+    expect(statusDuringCall).toBe("running");
+    expect((await job(id)).status).toBe("completed");
   });
 
   it("hides an unexpected setup error's details (unreadable stored tokens)", async () => {

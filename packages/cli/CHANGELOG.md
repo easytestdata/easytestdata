@@ -1,5 +1,15 @@
 # easytestdata
 
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies [2cd0c3e]
+- Updated dependencies [1bb8f90]
+  - @easytestdata/server@0.4.0
+  - @easytestdata/qbo-client@0.4.0
+  - @easytestdata/core@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

@@ -4,8 +4,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // A build whose brand turns teams off (one person per login) and whose extension module supplies
-// public pages: Settings has no Team section, /invite goes home, and a public path outside /p/
-// is refused when the app loads.
+// public pages: Settings has no Team section, and a public path outside /p/ is refused when the
+// app loads. (/invite going home is covered in extensions.test.tsx, which renders the whole app.)
 const extensionModule = vi.hoisted(() => ({
   value: { routes: [], navItems: [], publicRoutes: [] as { path: string; element: () => null }[] }
 }));

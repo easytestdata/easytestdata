@@ -44,7 +44,8 @@ vi.mock("@easytestdata/web-brand", () => ({
     repoUrl: null,
     supportsSourceReads: true,
     companionUrl: "https://example.com",
-    companionLabel: "Companion"
+    companionLabel: "Companion",
+    teams: false
   }
 }));
 vi.mock("../contexts/SentryContext", () => ({
@@ -82,6 +83,21 @@ describe("web extensions", () => {
     expect(await screen.findByText("public-connect-page")).toBeTruthy();
     expect(screen.queryByText("login-page")).toBeNull();
     expect(window.location.pathname).toBe("/p/connect");
+    // Outside the app layout, even for a signed-in user.
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByRole("main")).toBeNull();
+    cleanup();
+    authState.user = { id: "u1", email: "u@example.com", displayName: "U Ser", avatarUrl: null };
+    renderAt("/p/connect");
+    expect(await screen.findByText("public-connect-page")).toBeTruthy();
+    expect(screen.queryByRole("navigation")).toBeNull();
+  });
+
+  it("sends /invite home when the brand turns teams off", async () => {
+    authState.user = { id: "u1", email: "u@example.com", displayName: "U Ser", avatarUrl: null };
+    renderAt("/invite?token=abc");
+    expect(await screen.findByText("home-page")).toBeTruthy();
+    expect(window.location.pathname).toBe("/home");
   });
 
   it("keeps the bundled fixture paths unique and outside built-in routes", () => {
@@ -162,6 +178,7 @@ describe("web extensions", () => {
       supportsSourceReads: true,
       companionUrl: "https://example.com",
       companionLabel: "Companion",
+      teams: false,
       logo: extensions.logo
     });
     const Logo = brand.logo;

@@ -64,6 +64,16 @@ describe("brand.teams = false", () => {
 });
 
 describe("public extension routes", () => {
+  it.each(["/p/", "/p/connect", "/P/Connect"])("accepts the public path %s", async (path) => {
+    vi.resetModules();
+    extensionModule.value = {
+      routes: [],
+      navItems: [],
+      publicRoutes: [{ path, element: () => null }]
+    };
+    await expect(import("../App")).resolves.toHaveProperty("App");
+  });
+
   it("refuses a public path that does not start with /p/", async () => {
     vi.resetModules();
     extensionModule.value = {

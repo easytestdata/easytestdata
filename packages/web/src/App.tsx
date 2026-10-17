@@ -136,19 +136,21 @@ function InviteRoute() {
   );
 }
 
-// Extension pages that need no sign-in. They live under /p/ so they can never shadow an app page.
+// Extension pages that need no sign-in live under /p/, which is theirs alone: a signed-in route
+// there could catch a public address first and send a signed-out visitor to the login page.
+// React Router matches paths case-insensitively, so /P/ counts as /p/.
+const inPublicSpace = (path: string) => {
+  const lower = path.toLowerCase();
+  return lower === "/p" || lower.startsWith("/p/");
+};
 const publicRoutes = extensions.publicRoutes ?? [];
 for (const route of publicRoutes) {
-  if (!/^\/p\/[^/]/.test(route.path)) {
+  if (!inPublicSpace(route.path) || route.path === "/p") {
     throw new Error(`Public extension route ${route.path} must start with /p/`);
   }
 }
-// /p/ is reserved for public pages: a signed-in route there could catch a public address first
-// and send a signed-out visitor to the login page.
-// React Router matches paths case-insensitively, so /P/ is the same address as /p/.
 for (const route of extensions.routes) {
-  const path = route.path.toLowerCase();
-  if (path === "/p" || path.startsWith("/p/")) {
+  if (inPublicSpace(route.path)) {
     throw new Error(`Extension route ${route.path} must not use /p/, which is for public pages`);
   }
 }

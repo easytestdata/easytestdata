@@ -1,5 +1,8 @@
 import { batchCreate, batchUpdate, clearSandbox } from "@easytestdata/qbo-client";
 
+// Node's built-in multipart body classes (the lint environment does not list them as globals).
+const { FormData, Blob } = globalThis;
+
 // Endpoint names are QuickBooks entity names in lower case ("invoice", "recurringtransaction").
 const ENDPOINT = /^[a-z]{2,40}$/;
 const REPORT = /^[A-Za-z]{2,60}$/;

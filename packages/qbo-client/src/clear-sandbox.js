@@ -59,12 +59,18 @@ function depth(row, byId) {
   return d;
 }
 
-function childrenFirst(rows) {
+// Groups to make inactive one after another: the deepest children first, each tree level its own
+// group, then categories the same way. The batch helper runs chunks in parallel, so a parent and
+// its children must never share a call.
+function inactivationGroups(rows) {
   const byId = new Map(rows.map((row) => [row.Id, row]));
-  return [...rows].sort((a, b) => {
-    const categoryLast = (a.Type === "Category") - (b.Type === "Category");
-    return categoryLast || depth(b, byId) - depth(a, byId);
-  });
+  const groups = new Map();
+  for (const row of rows) {
+    const key = `${row.Type === "Category" ? 1 : 0}:${String(50 - depth(row, byId)).padStart(2, "0")}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  return [...groups.keys()].sort().map((key) => groups.get(key));
 }
 
 function faultMessage(error) {
@@ -252,27 +258,28 @@ async function inactivate(client, target, { signal, refused }) {
     // Sent as read: the sandbox tests updated terms and payment methods with their name.
     ...(row.Name !== undefined ? { Name: row.Name } : {})
   });
-  const ordered = childrenFirst(rows);
-
-  if (target.batch) {
-    const result = await batchUpdate(
-      client,
-      target.batch,
-      ordered.map((row) => ({ payload: payload(row) })),
-      { signal, entityLabel: target.entity }
-    );
-    result.failures.forEach(refused);
-    return result.updatedCount;
-  }
-
   let count = 0;
-  for (const row of ordered) {
+  for (const group of inactivationGroups(rows)) {
     cancelled(signal);
-    try {
-      await client.update(target.entity.toLowerCase(), payload(row));
-      count += 1;
-    } catch (error) {
-      refused({ entity: target.entity, id: row.Id, message: faultMessage(error) });
+    if (target.batch) {
+      const result = await batchUpdate(
+        client,
+        target.batch,
+        group.map((row) => ({ payload: payload(row) })),
+        { signal, entityLabel: target.entity }
+      );
+      result.failures.forEach(refused);
+      count += result.updatedCount;
+      continue;
+    }
+    for (const row of group) {
+      cancelled(signal);
+      try {
+        await client.update(target.entity.toLowerCase(), payload(row));
+        count += 1;
+      } catch (error) {
+        refused({ entity: target.entity, id: row.Id, message: faultMessage(error) });
+      }
     }
   }
   return count;

@@ -223,6 +223,20 @@ function watchForCancellation(jobId, controller, pollMs) {
  * retried.
  */
 export async function processJob({ jobId, kind }, options = {}) {
+  const controller = new AbortController();
+  let timer;
+  let settleLifetime;
+  // Registered before anything is awaited, so a shutdown or force-fail that lands while an
+  // extension job's timeout is still being read aborts this job and waits for it like any other.
+  // A shutdown stops the timeout (a cancel keeps it, so a cancel that never drains is still
+  // failed at the timeout): its failed write could otherwise land after the drain let the
+  // database close.
+  const entry = {
+    controller,
+    run: new Promise((resolve) => (settleLifetime = resolve)),
+    stopTimeout: () => clearTimeout(timer)
+  };
+  activeRuns.set(jobId, entry);
   // An extension job's registered timeout replaces its lane's default; it is read before the
   // timer starts.
   const timeoutMs =
@@ -233,14 +247,14 @@ export async function processJob({ jobId, kind }, options = {}) {
     })) ??
     (kind === "local" ? config.jobs.localTimeoutMs : config.jobs.qboTimeoutMs);
   const graceMs = options.timeoutGraceMs ?? config.jobs.timeoutGraceMs;
-  const controller = new AbortController();
   const stopCancelWatch = watchForCancellation(
     jobId,
     controller,
     options.cancelPollMs ?? config.jobs.cancelPollMs
   );
-  let timer;
   const timedOut = new Promise((_resolve, reject) => {
+    // Already shut down while the timeout was read: no timer (runJob returns at once).
+    if (controller.signal.reason instanceof JobShutdownError) return;
     timer = setTimeout(() => {
       const err = new JobTimeoutError(timeoutMs);
       controller.abort(err);
@@ -248,15 +262,11 @@ export async function processJob({ jobId, kind }, options = {}) {
     }, timeoutMs);
     timer.unref?.();
   });
-  // A shutdown stops the timeout (a cancel keeps it, so a cancel that never drains is still
-  // failed at the timeout): its failed write could otherwise land after the drain let the
-  // database close.
-  const entry = { controller, run: null, stopTimeout: () => clearTimeout(timer) };
-  activeRuns.set(jobId, entry);
   const run = runJob(jobId, controller.signal, options);
   entry.run = run;
   const unregister = () => {
     if (activeRuns.get(jobId) === entry) activeRuns.delete(jobId);
+    settleLifetime();
   };
   // `entry.run` is read when the work settles: after a timeout it also covers the timeout write.
   run
@@ -331,10 +341,15 @@ function failureMessage(signal, err, fallback) {
 }
 
 // Ends an extension job that stopped because it was cancelled, keeping whatever partial result
-// its handler attached to the error.
+// its handler attached. A cancel that drained past the timeout was already failed with the timeout
+// flag: it still ends cancelled, without the timeout's error or flag.
 async function markExtensionCancelled(jobId, result) {
   await query(
-    `UPDATE jobs SET status = 'cancelled', result = COALESCE($2, result), completed_at = NOW()
+    `UPDATE jobs
+     SET status = 'cancelled', error = NULL, completed_at = NOW(),
+         result = CASE WHEN $2::jsonb IS NOT NULL THEN $2::jsonb
+                       WHEN result->>'timedOut' = 'true' THEN NULL
+                       ELSE result END
      WHERE id = $1 AND (status IN ${OPEN_STATUSES} OR ${TIMED_OUT_FAILED})`,
     [jobId, result]
   );
@@ -403,13 +418,20 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
         job.connection_id
       ]);
     }
+    // Stopped (cancel, timeout, shutdown or force-fail) while the handler was finishing: the job
+    // ends through the stop's own path, keeping what the handler returned, never "completed".
+    if (signal.aborted) {
+      throw Object.assign(new Error("Stopped"), { result: outcome?.result ?? null });
+    }
     const result = outcome?.result ?? {};
     const entityCount = Number.isInteger(outcome?.entityCount) ? outcome.entityCount : 0;
     if (!(await markJobCompleted(jobId, result, entityCount))) {
+      // Not running any more: a cancel landed before its signal did.
       await markExtensionCancelled(jobId, JSON.stringify(result));
     }
   } catch (err) {
-    const partial = err?.result === undefined ? null : JSON.stringify(err.result);
+    const partial =
+      err?.result === undefined || err.result === null ? null : JSON.stringify(err.result);
     if (isCancelled(signal)) {
       await markExtensionCancelled(jobId, partial);
       return;

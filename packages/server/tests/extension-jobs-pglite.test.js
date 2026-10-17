@@ -25,7 +25,8 @@ const { encryptTokenPair } = await import("../src/crypto/tokens.js");
 const { validateExtensions } = await import("../src/extensions.js");
 const { registerExtensionJobs, extensionJobTimeoutMs } =
   await import("../src/workers/extension-jobs.js");
-const { processJob } = await import("../src/workers/index.js");
+const { processJob, abortRunningJob, abortAndDrainJobs, JobForceFailedError, JobShutdownError } =
+  await import("../src/workers/index.js");
 const { getMonthlyUsage } = await import("../src/services/limits.js");
 const api = await import("../src/services/extension-jobs-api.js");
 const { QboClient } = await import("@easytestdata/qbo-client");
@@ -253,6 +254,75 @@ describe("extension jobs on PGlite", () => {
     expect((await api.cancelExtensionJob(team.teamId, id)).status).toBe("cancelling");
     await running;
     expect(await job(id)).toMatchObject({ status: "cancelled", result: { written: 30 } });
+  });
+
+  it("never completes a job force-failed while its handler was finishing", async () => {
+    register({
+      copy: {
+        needsSandbox: false,
+        run: (ctx) =>
+          new Promise((resolve) =>
+            ctx.signal.addEventListener("abort", () => resolve({ result: { partial: true } }))
+          )
+      }
+    });
+    const team = await createTeam("forcefail");
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      extension: "demo",
+      kind: "copy"
+    });
+    const running = run(id);
+    await tick(50);
+    expect(abortRunningJob(id, new JobForceFailedError())).toBe(true);
+    await running;
+    const row = await job(id);
+    expect(row.status).toBe("failed");
+    expect(row.result).toEqual({ partial: true });
+  });
+
+  it("ends a cancel that drained past the timeout cancelled, without the timeout's error", async () => {
+    register({
+      copy: {
+        needsSandbox: false,
+        run: async () => {
+          await tick(400);
+          throw new Error("stopped late");
+        }
+      }
+    });
+    const team = await createTeam("latecancel");
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      extension: "demo",
+      kind: "copy"
+    });
+    const running = run(id, { timeoutMs: 100, timeoutGraceMs: 20 });
+    await tick(30);
+    await api.cancelExtensionJob(team.teamId, id);
+    await running;
+    expect((await job(id)).status).toBe("failed"); // failed at the timeout while still draining
+    await tick(450);
+    const row = await job(id);
+    expect(row).toMatchObject({ status: "cancelled", error: null, result: null });
+  });
+
+  it("leaves a job pending, and the drain waits for it, when shutdown lands while its timeout is read", async () => {
+    const runFn = vi.fn();
+    register({ copy: { needsSandbox: false, run: runFn } });
+    const team = await createTeam("shutdown");
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      extension: "demo",
+      kind: "copy"
+    });
+    let finished = false;
+    const running = run(id).then(() => (finished = true));
+    await abortAndDrainJobs(new JobShutdownError());
+    expect(finished).toBe(true);
+    await running;
+    expect((await job(id)).status).toBe("pending");
+    expect(runFn).not.toHaveBeenCalled();
   });
 
   it("fails a row whose handler is not registered", async () => {

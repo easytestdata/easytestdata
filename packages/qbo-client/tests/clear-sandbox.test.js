@@ -15,6 +15,13 @@ function fakeQbo(tables, { refuse = {} } = {}) {
   const apply = (op, entity, payload) => {
     const row = find(entity, payload.Id);
     check(op, entity, payload);
+    // Like QuickBooks: a parent can't be made inactive while a child is still active.
+    if (op === "update" && payload.Active === false) {
+      const activeChild = rows(entity).find(
+        (r) => r.ParentRef?.value === payload.Id && r.Active !== false
+      );
+      if (activeChild) throw fault(`${entity} ${payload.Id} still has active children`);
+    }
     if (op === "delete") {
       tables[entity] = rows(entity).filter((r) => r.Id !== payload.Id);
     } else {
@@ -38,7 +45,13 @@ function fakeQbo(tables, { refuse = {} } = {}) {
       return { QueryResponse: { [entity]: result.slice(start - 1, start - 1 + max) } };
     },
     async batch(items) {
-      calls.push(["batch", items.map((i) => i.operation)]);
+      calls.push([
+        "batch",
+        items.map((i) => {
+          const entity = Object.keys(i).find((k) => k !== "bId" && k !== "operation");
+          return `${i.operation}:${entity}:${i[entity].Id}`;
+        })
+      ]);
       return {
         BatchItemResponse: items.map((item) => {
           const entity = Object.keys(item).find((k) => k !== "bId" && k !== "operation");
@@ -184,10 +197,35 @@ describe("clearSandbox", () => {
     const tables = sample();
     const qbo = fakeQbo(tables);
     await clearSandbox(qbo);
-    const updates = qbo.calls.filter(([op]) => op === "batch");
+    const report = await clearSandbox(fakeQbo(sample()));
+    expect(report.leftovers.records).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ entity: "Customer" })])
+    );
     expect(tables.Customer.every((c) => c.Active === false)).toBe(true);
     expect(tables.Item.every((i) => i.Active === false)).toBe(true);
-    expect(updates.length).toBeGreaterThan(0);
+    // Each tree level is its own batch call, child first: never a parent and its child together.
+    const batches = qbo.calls.filter(([op]) => op === "batch").map(([, ids]) => ids);
+    const at = (id) => batches.findIndex((ids) => ids.includes(id));
+    expect(at("update:Customer:41")).toBeLessThan(at("update:Customer:40"));
+    expect(at("update:Item:11")).toBeLessThan(at("update:Item:10"));
+  });
+
+  it("keeps parents and children in separate calls even past one batch chunk", async () => {
+    const tables = sample();
+    tables.Customer = [
+      { Id: "1", SyncToken: "0", DisplayName: "Parent", Active: true },
+      ...Array.from({ length: 40 }, (_, i) => ({
+        Id: String(100 + i),
+        SyncToken: "0",
+        DisplayName: `Child ${i}`,
+        Active: true,
+        ParentRef: { value: "1" }
+      }))
+    ];
+    const qbo = fakeQbo(tables);
+    const report = await clearSandbox(qbo);
+    expect(tables.Customer.every((c) => c.Active === false)).toBe(true);
+    expect(report.inactivatedByEntity.Customer).toBe(41);
   });
 
   it("keeps QuickBooks' own accounts and reports refused inactivations as leftovers, not failures", async () => {

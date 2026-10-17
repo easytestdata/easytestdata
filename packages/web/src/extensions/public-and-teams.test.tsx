@@ -76,7 +76,7 @@ describe("public extension routes", () => {
     );
   });
 
-  it.each(["/p/connect", "/p", "/p/:slug"])(
+  it.each(["/p/connect", "/p", "/p/:slug", "/P/connect", "/P"])(
     "refuses a signed-in extension route at %s",
     async (path) => {
       vi.resetModules();

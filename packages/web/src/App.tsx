@@ -145,8 +145,10 @@ for (const route of publicRoutes) {
 }
 // /p/ is reserved for public pages: a signed-in route there could catch a public address first
 // and send a signed-out visitor to the login page.
+// React Router matches paths case-insensitively, so /P/ is the same address as /p/.
 for (const route of extensions.routes) {
-  if (route.path === "/p" || route.path.startsWith("/p/")) {
+  const path = route.path.toLowerCase();
+  if (path === "/p" || path.startsWith("/p/")) {
     throw new Error(`Extension route ${route.path} must not use /p/, which is for public pages`);
   }
 }

@@ -6,6 +6,7 @@ import { AccountSection } from "@/components/settings/AccountSection";
 import { TeamSection } from "@/components/settings/TeamSection";
 import { AboutSection } from "@/components/settings/AboutSection";
 import { useAppConfig } from "@/contexts/AppConfigContext";
+import { brand } from "@/brand";
 
 const SECTIONS = [
   { id: "account", label: "Account", icon: User },
@@ -18,9 +19,11 @@ type SectionId = (typeof SECTIONS)[number]["id"];
 export function SettingsPage() {
   const { section } = useParams<{ section?: string }>();
   const navigate = useNavigate();
-  // Local mode has one built-in user and team: no Team section.
+  // Local mode has one built-in user and team, and a build whose brand turns teams off has one
+  // person per login: no Team section either way.
   const local = useAppConfig().deployment === "local";
-  const sections = local ? SECTIONS.filter((s) => s.id !== "team") : SECTIONS;
+  const sections =
+    local || brand.teams === false ? SECTIONS.filter((s) => s.id !== "team") : SECTIONS;
 
   const activeSection = (section ?? "account") as SectionId;
   if (!sections.some((s) => s.id === activeSection)) {

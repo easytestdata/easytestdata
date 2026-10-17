@@ -221,6 +221,21 @@ describe("createWebConfig", () => {
     }
   );
 
+  it.each([{ teams: "no" }, { teams: null }, { teams: 0 }])(
+    "rejects a non-boolean teams %j and accepts true, false or absent",
+    (fields) => {
+      expect(() => createWebConfig({ brandFile: brandFile({ ...metadata, ...fields }) })).toThrow(
+        /teams must be a boolean/
+      );
+      for (const teams of [true, false]) {
+        expect(() =>
+          createWebConfig({ brandFile: brandFile({ ...metadata, teams }) })
+        ).not.toThrow();
+      }
+      expect(() => createWebConfig({ brandFile: brandFile(metadata) })).not.toThrow();
+    }
+  );
+
   it("rejects malformed JSON and accepts valid JSON at the same path", () => {
     const file = brandFile(metadata);
     writeFileSync(file, "{ broken");

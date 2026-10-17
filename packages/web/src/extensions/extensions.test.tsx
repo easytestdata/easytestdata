@@ -32,7 +32,8 @@ vi.mock("@easytestdata/web-extensions", async () => {
         { path: "/reports", element: () => <div>reports-page</div> },
         { path: "/reports/lazy", element: ReportsPage }
       ],
-      navItems: [{ path: "/reports", label: "Reports", icon: ChartNoAxesCombined }]
+      navItems: [{ path: "/reports", label: "Reports", icon: ChartNoAxesCombined }],
+      publicRoutes: [{ path: "/p/connect", element: () => <div>public-connect-page</div> }]
     } satisfies WebExtensions
   };
 });
@@ -76,6 +77,13 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("web extensions", () => {
+  it("serves a public extension page signed out, without the app layout or a login redirect", async () => {
+    renderAt("/p/connect");
+    expect(await screen.findByText("public-connect-page")).toBeTruthy();
+    expect(screen.queryByText("login-page")).toBeNull();
+    expect(window.location.pathname).toBe("/p/connect");
+  });
+
   it("keeps the bundled fixture paths unique and outside built-in routes", () => {
     for (const items of [extensions.routes, extensions.navItems]) {
       const paths = items.map((item) => item.path);

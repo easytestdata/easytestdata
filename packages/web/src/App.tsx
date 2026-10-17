@@ -123,10 +123,25 @@ const errorFallback = (
   </div>
 );
 
-/** Invite links go to the invite page; local mode has no teams or invites, so they go home. */
+/**
+ * Invite links go to the invite page; local mode, and a build whose brand turns teams off, have
+ * no invites, so they go home.
+ */
 function InviteRoute() {
   const { deployment } = useAppConfig();
-  return deployment === "local" ? <Navigate to="/home" replace /> : <InvitePage />;
+  return deployment === "local" || brand.teams === false ? (
+    <Navigate to="/home" replace />
+  ) : (
+    <InvitePage />
+  );
+}
+
+// Extension pages that need no sign-in. They live under /p/ so they can never shadow an app page.
+const publicRoutes = extensions.publicRoutes ?? [];
+for (const route of publicRoutes) {
+  if (!/^\/p\/[^/]/.test(route.path)) {
+    throw new Error(`Public extension route ${route.path} must start with /p/`);
+  }
 }
 
 /** First-run Intuit keys setup exists only in local mode; Cloud reads the keys from its env. */
@@ -193,6 +208,20 @@ export function App() {
                           <Route path="/admin/jobs/:id" element={<JobDetailPage />} />
                           <Route path="/admin/connections" element={<ConnectionHealthPage />} />
                         </Route>
+                        {publicRoutes.map((route) => {
+                          const Element = route.element;
+                          return (
+                            <Route
+                              key={route.path}
+                              path={route.path}
+                              element={
+                                <Suspense fallback={<RouteLoadingFallback />}>
+                                  <Element />
+                                </Suspense>
+                              }
+                            />
+                          );
+                        })}
                         <Route path="*" element={<Navigate to="/home" replace />} />
                       </Routes>
                     </BrowserRouter>

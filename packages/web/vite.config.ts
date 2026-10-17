@@ -37,6 +37,9 @@ function readBrandMetadata(file: string): BrandMetadata {
       `Invalid brand metadata in ${file}: expected name and description strings, repoUrl string or null, and supportsSourceReads boolean.`
     );
   }
+  if ("teams" in metadata && typeof metadata.teams !== "boolean") {
+    throw new Error(`Invalid brand metadata in ${file}: teams must be a boolean when supplied.`);
+  }
   const companionUrl = "companionUrl" in metadata ? metadata.companionUrl : undefined;
   const companionLabel = "companionLabel" in metadata ? metadata.companionLabel : undefined;
   if (

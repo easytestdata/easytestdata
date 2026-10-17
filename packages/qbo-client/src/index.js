@@ -22,5 +22,6 @@ export {
 export { isGeneratedRecord } from "./generated-identity.js";
 export { loadPlanIntoQbo } from "./load-service.js";
 export { purgeTransactions } from "./purge-service.js";
+export { clearSandbox } from "./clear-sandbox.js";
 export { LoadLedger } from "./load-ledger.js";
 export { rollbackLoad } from "./rollback-service.js";

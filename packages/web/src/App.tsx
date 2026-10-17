@@ -143,6 +143,13 @@ for (const route of publicRoutes) {
     throw new Error(`Public extension route ${route.path} must start with /p/`);
   }
 }
+// /p/ is reserved for public pages: a signed-in route there could catch a public address first
+// and send a signed-out visitor to the login page.
+for (const route of extensions.routes) {
+  if (route.path === "/p" || route.path.startsWith("/p/")) {
+    throw new Error(`Extension route ${route.path} must not use /p/, which is for public pages`);
+  }
+}
 
 /** First-run Intuit keys setup exists only in local mode; Cloud reads the keys from its env. */
 function SetupRoute() {

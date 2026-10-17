@@ -7,7 +7,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // public pages: Settings has no Team section, and a public path outside /p/ is refused when the
 // app loads. (/invite going home is covered in extensions.test.tsx, which renders the whole app.)
 const extensionModule = vi.hoisted(() => ({
-  value: { routes: [], navItems: [], publicRoutes: [] as { path: string; element: () => null }[] }
+  value: {
+    routes: [] as { path: string; element: () => null }[],
+    navItems: [],
+    publicRoutes: [] as { path: string; element: () => null }[]
+  }
 }));
 vi.mock("@easytestdata/web-brand", () => ({
   default: {
@@ -71,4 +75,17 @@ describe("public extension routes", () => {
       "Public extension route /connect must start with /p/"
     );
   });
+
+  it.each(["/p/connect", "/p", "/p/:slug"])(
+    "refuses a signed-in extension route at %s",
+    async (path) => {
+      vi.resetModules();
+      extensionModule.value = {
+        routes: [{ path, element: () => null }],
+        navItems: [],
+        publicRoutes: [{ path: "/p/connect", element: () => null }]
+      };
+      await expect(import("../App")).rejects.toThrow(`Extension route ${path} must not use /p/`);
+    }
+  );
 });

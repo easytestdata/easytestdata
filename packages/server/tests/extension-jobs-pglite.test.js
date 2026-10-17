@@ -424,6 +424,52 @@ describe("extension jobs on PGlite", () => {
     expect(conn.rows[0].last_used_at).toBeNull();
   });
 
+  it("stamps sandbox activity even when the handler fails after using it", async () => {
+    vi.spyOn(QboClient.prototype, "request").mockResolvedValue({ QueryResponse: {} });
+    register({
+      copy: {
+        needsSandbox: true,
+        run: async (ctx) => {
+          await ctx.target.query("select * from Customer");
+          throw new AppError(409, "X", "Failed after writing.");
+        }
+      }
+    });
+    const team = await createTeam("usedthenfailed");
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    });
+    await run(id);
+    expect((await job(id)).status).toBe("failed");
+    const conn = await db.query("SELECT last_used_at FROM qbo_connections WHERE id = $1", [
+      team.connectionId
+    ]);
+    expect(conn.rows[0].last_used_at).not.toBeNull();
+  });
+
+  it("hides an unexpected setup error's details (unreadable stored tokens)", async () => {
+    register({ copy: { needsSandbox: true, run: vi.fn() } });
+    const team = await createTeam("badtokens");
+    await db.query(
+      "UPDATE qbo_connections SET access_token_enc = 'zz:zz', refresh_token_enc = 'zz:zz' WHERE id = $1",
+      [team.connectionId]
+    );
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    });
+    await run(id);
+    expect(await job(id)).toMatchObject({
+      status: "failed",
+      error: "The job failed. See the server log for details."
+    });
+  });
+
   it("fails a row whose handler is not registered", async () => {
     register({});
     const team = await createTeam("missing");

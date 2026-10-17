@@ -181,7 +181,7 @@ describe("clearSandbox", () => {
     const qbo = fakeQbo(tables, {
       refuse: {
         "update:InventoryAdjustment:30":
-          "You need to activate this item before updating the quantity."
+          "A business validation error has occurred while processing your request (Business Validation Error: You need to activate this item before updating the quantity.)"
       }
     });
     const report = await clearSandbox(qbo);
@@ -287,6 +287,20 @@ describe("clearSandbox", () => {
       ])
     );
     expect(report.leftovers.records.some((r) => r.entity === "Customer")).toBe(false);
+  });
+
+  it("keeps a failed request while zeroing a starting quantity a failure", async () => {
+    const tables = sample();
+    const qbo = fakeQbo(tables, {
+      refuse: { "update:InventoryAdjustment:30": "Request failed with status code 503" }
+    });
+    const report = await clearSandbox(qbo);
+    expect(report.failures).toContainEqual({
+      entity: "InventoryAdjustment",
+      id: "30",
+      message: "Request failed with status code 503"
+    });
+    expect(report.leftovers.records.some((r) => r.id === "30")).toBe(false);
   });
 
   it("reports other refusals as failures", async () => {

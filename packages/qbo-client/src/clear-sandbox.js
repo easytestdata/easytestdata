@@ -230,8 +230,15 @@ export async function clearSandbox(client, { emit = () => {}, signal } = {}) {
           ItemAdjustmentLineDetail: { ...line.ItemAdjustmentLineDetail, QtyDiff: 0 }
         }))
       });
-    } catch {
-      report.leftovers.records.push(leftover);
+    } catch (error) {
+      // QuickBooks refusing to change it is a leftover; a failed request is a failure.
+      if (REFUSAL.test(faultMessage(error))) report.leftovers.records.push(leftover);
+      else
+        report.failures.push({
+          entity: "InventoryAdjustment",
+          id: adjustment.Id,
+          message: faultMessage(error)
+        });
     }
   }
 

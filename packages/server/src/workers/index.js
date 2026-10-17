@@ -5,7 +5,8 @@ import { query, transaction } from "../db/pool.js";
 import {
   acquireConnectionLock,
   releaseConnectionLock,
-  buildLockedQboClient
+  buildLockedQboClient,
+  SANDBOX_DISCONNECTED_MESSAGE
 } from "../services/connection-lock.js";
 import {
   buildPlanFromScenario,
@@ -394,7 +395,9 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
   try {
     let target = null;
     if (handler.needsSandbox) {
-      if (!job.connection_id) throw new Error("This job needs a sandbox connection.");
+      if (!job.connection_id) {
+        throw new AppError(409, "SANDBOX_REQUIRED", "This job needs a sandbox connection.");
+      }
       const credentials = await getQboCredentials();
       if (!credentials) throw qboNotConfiguredError();
       lock = await acquireConnectionLock(job.connection_id, { waitMs: lockWaitMs });
@@ -402,7 +405,12 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
         job.connection_id,
         job.team_id
       ]);
-      if (conn.rows.length === 0) throw new Error("QBO connection not found");
+      if (conn.rows.length === 0) {
+        throw new AppError(404, "NOT_FOUND", "The sandbox for this job was not found.");
+      }
+      if (conn.rows[0].disconnected_at) {
+        throw new AppError(409, "SANDBOX_DISCONNECTED", SANDBOX_DISCONNECTED_MESSAGE);
+      }
       const client = buildLockedQboClient(conn.rows[0], credentials, {
         signal,
         minorVersion: "75"
@@ -439,13 +447,6 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
     } finally {
       await flushProgress();
     }
-    // Only a job that really talked to the sandbox counts as connection activity (the token
-    // keepalive and health read last_used_at).
-    if (targetUsed) {
-      await query("UPDATE qbo_connections SET last_used_at = NOW() WHERE id = $1", [
-        job.connection_id
-      ]);
-    }
     // Stopped (cancel, timeout, shutdown or force-fail) while the handler was finishing: the job
     // ends through the stop's own path, keeping what the handler returned, never "completed".
     if (signal.aborted) {
@@ -476,7 +477,9 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
       return;
     }
     let message;
-    if (!started || err instanceof AppError || signal.aborted) {
+    // Shown to users: an AppError's message or the stop's reason; anything else (a database or
+    // decryption error during setup included) is logged and replaced.
+    if (err instanceof AppError || signal.aborted) {
       message = failureMessage(signal, err, "Job failed");
     } else {
       logger.error({ err, jobId, extension, kind }, "Extension job failed");
@@ -484,6 +487,13 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
     }
     await markJobFailed(jobId, message, { result: partial, upgradeTimedOut: partial !== null });
   } finally {
+    // A job that really talked to the sandbox counts as connection activity (the token
+    // keepalive and health read last_used_at), whether it then succeeded or not.
+    if (targetUsed) {
+      await query("UPDATE qbo_connections SET last_used_at = NOW() WHERE id = $1", [
+        job.connection_id
+      ]).catch((err) => logger.warn({ err, jobId }, "Could not stamp sandbox activity"));
+    }
     await releaseConnectionLock(lock);
   }
 }

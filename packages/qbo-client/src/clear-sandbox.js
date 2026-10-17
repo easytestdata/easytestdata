@@ -30,6 +30,11 @@ const LIST_TARGETS = [
   { entity: "PaymentMethod", label: "payment methods" }
 ];
 
+// QuickBooks' answers when it won't make one of its built-in records inactive (validation
+// faults, not transport errors).
+const REFUSAL =
+  /business validation error|invalid or unsupported property|used as the default|cash payment method|can't|cannot|not allowed/i;
+
 // Refusals QuickBooks makes for its own reasons (a term used as a default, the built-in "Cash"
 // payment method, an initial inventory adjustment): reported as leftovers, not as failures.
 const LOCKED_BY_QUICKBOOKS =
@@ -95,8 +100,15 @@ export async function clearSandbox(client, { emit = () => {}, signal } = {}) {
   const totalSteps = PURGE_TARGETS.length + 3 + LIST_TARGETS.length + 1;
   let step = 0;
   const progress = (message) => emit({ step: ++step, totalSteps, message });
-  const refused = ({ entity, id, message }) =>
-    report.leftovers.records.push({ entity, id, reason: "quickbooks-refused", message });
+  // Only a refusal QuickBooks gave for the record itself is a leftover; a request that failed
+  // (network, timeout, 5xx) is a failure, so a list that was never cleared is never "clear".
+  const refused = ({ entity, id, message }) => {
+    if (REFUSAL.test(message)) {
+      report.leftovers.records.push({ entity, id, reason: "quickbooks-refused", message });
+    } else {
+      report.failures.push({ entity, id, message });
+    }
+  };
   const record = (failure) => {
     if (LOCKED_BY_QUICKBOOKS.test(failure.message)) {
       report.leftovers.records.push({
@@ -130,10 +142,18 @@ export async function clearSandbox(client, { emit = () => {}, signal } = {}) {
   // are deleted with the same wrapper.
   cancelled(signal);
   progress("Removing recurring templates");
-  const recurring = getQueryItems(
-    await client.query("select * from RecurringTransaction maxresults 1000"),
-    "RecurringTransaction"
-  );
+  const recurring = [];
+  for (let start = 1; ; start += 1000) {
+    cancelled(signal);
+    const page = getQueryItems(
+      await client.query(
+        `select * from RecurringTransaction startposition ${start} maxresults 1000`
+      ),
+      "RecurringTransaction"
+    );
+    recurring.push(...page);
+    if (page.length < 1000 || start > MAX_PAGES * 1000) break;
+  }
   report.deletedByEntity.RecurringTransaction = 0;
   for (const wrapped of recurring) {
     cancelled(signal);

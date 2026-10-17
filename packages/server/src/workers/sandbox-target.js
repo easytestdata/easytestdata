@@ -21,10 +21,9 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
  * sandbox-only QboClient (buildLockedQboClient), built by the job runner inside the job's
  * connection lock and bound to the job's signal. It reaches only that sandbox.
  */
-export function createSandboxTarget(client, { signal } = {}) {
+export function createSandboxTarget(client, { signal, onUse = () => {} } = {}) {
   const numbered = (items) => items.map((item, index) => ({ ...item, originalIndex: index }));
-  return Object.freeze({
-    realmId: client.cfg.qboRealmId,
+  const methods = {
     query: (sql) => client.query(sql),
     read: (entity, id) => client.request("GET", `/${endpoint(entity)}/${encodeURIComponent(id)}`),
     create: (entity, payload) => client.create(endpoint(entity), payload),
@@ -72,5 +71,16 @@ export function createSandboxTarget(client, { signal } = {}) {
         data: { [type]: { Id, SyncToken } }
       }),
     clearSandbox: ({ onProgress } = {}) => clearSandbox(client, { emit: onProgress, signal })
-  });
+  };
+  // Every call reports that the sandbox was used (the runner stamps connection activity then).
+  const used = Object.fromEntries(
+    Object.entries(methods).map(([name, fn]) => [
+      name,
+      (...args) => {
+        onUse();
+        return fn(...args);
+      }
+    ])
+  );
+  return Object.freeze({ realmId: client.cfg.qboRealmId, ...used });
 }

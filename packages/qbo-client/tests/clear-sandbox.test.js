@@ -259,6 +259,36 @@ describe("clearSandbox", () => {
     });
   });
 
+  it("deletes every recurring template, past the first page", async () => {
+    const tables = sample();
+    tables.RecurringTransaction = Array.from({ length: 1003 }, (_, i) => ({
+      Invoice: { Id: String(5000 + i), SyncToken: "0" }
+    }));
+    const report = await clearSandbox(fakeQbo(tables));
+    expect(report.deletedByEntity.RecurringTransaction).toBe(1003);
+    expect(tables.RecurringTransaction).toEqual([]);
+  });
+
+  it("keeps a failed request a failure, never a leftover", async () => {
+    const tables = sample();
+    const qbo = fakeQbo(tables);
+    const batch = qbo.batch;
+    qbo.batch = async (items) => {
+      if (items.some((i) => i.Customer)) throw new Error("Request failed with status code 503");
+      return batch(items);
+    };
+    const report = await clearSandbox(qbo);
+    expect(report.failures).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entity: "Customer",
+          message: "Request failed with status code 503"
+        })
+      ])
+    );
+    expect(report.leftovers.records.some((r) => r.entity === "Customer")).toBe(false);
+  });
+
   it("reports other refusals as failures", async () => {
     const tables = sample();
     const qbo = fakeQbo(tables, { refuse: { "delete:Invoice:1": "Object Not Found" } });

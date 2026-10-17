@@ -325,6 +325,105 @@ describe("extension jobs on PGlite", () => {
     expect(runFn).not.toHaveBeenCalled();
   });
 
+  it("never starts the handler when stopped while waiting for the connection lock", async () => {
+    const runFn = vi.fn();
+    register({ copy: { needsSandbox: true, run: runFn } });
+    const team = await createTeam("lockwait");
+    const { withConnectionLock } = await import("../src/services/connection-lock.js");
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    });
+    let release;
+    const held = withConnectionLock(team.connectionId, () => new Promise((r) => (release = r)));
+    const running = run(id, { lockWaitMs: 2000 });
+    await tick(60);
+    await api.cancelExtensionJob(team.teamId, id);
+    await tick(60);
+    release();
+    await held;
+    await running;
+    expect(runFn).not.toHaveBeenCalled();
+    expect((await job(id)).status).toBe("cancelled");
+  });
+
+  it("puts a job shut down before its handler started back to pending", async () => {
+    const runFn = vi.fn();
+    register({ copy: { needsSandbox: true, run: runFn } });
+    const team = await createTeam("lockshutdown");
+    const { withConnectionLock } = await import("../src/services/connection-lock.js");
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    });
+    let release;
+    const held = withConnectionLock(team.connectionId, () => new Promise((r) => (release = r)));
+    const running = run(id, { lockWaitMs: 2000 });
+    await tick(60);
+    const drained = abortAndDrainJobs(new JobShutdownError());
+    await tick(20);
+    release();
+    await held;
+    await Promise.all([running, drained]);
+    expect(runFn).not.toHaveBeenCalled();
+    expect((await job(id)).status).toBe("pending");
+  });
+
+  it("still ends a job whose result can't be saved", async () => {
+    const team = await createTeam("unserializable");
+    const failing = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      extension: "demo",
+      kind: "bad"
+    });
+    register({
+      bad: {
+        needsSandbox: false,
+        run: async () => {
+          throw Object.assign(new AppError(400, "X", "Broken."), { result: { big: 10n } });
+        }
+      },
+      badok: { needsSandbox: false, run: async () => ({ result: { big: 10n } }) }
+    });
+    await run(failing.id);
+    expect(await job(failing.id)).toMatchObject({
+      status: "failed",
+      error: "Broken.",
+      result: { resultError: "The job's result could not be saved." }
+    });
+    const ok = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      extension: "demo",
+      kind: "badok"
+    });
+    await run(ok.id);
+    expect(await job(ok.id)).toMatchObject({
+      status: "completed",
+      result: { resultError: "The job's result could not be saved." }
+    });
+  });
+
+  it("stamps connection activity only when the handler used the sandbox", async () => {
+    register({ copy: { needsSandbox: true, run: async () => ({ result: {} }) } });
+    const team = await createTeam("unused");
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    });
+    await run(id);
+    expect((await job(id)).status).toBe("completed");
+    const conn = await db.query("SELECT last_used_at FROM qbo_connections WHERE id = $1", [
+      team.connectionId
+    ]);
+    expect(conn.rows[0].last_used_at).toBeNull();
+  });
+
   it("fails a row whose handler is not registered", async () => {
     register({});
     const team = await createTeam("missing");

@@ -81,6 +81,29 @@ describe("admin job actions", () => {
     cleanup();
   });
 
+  it("offers no Retry for a failed extension job (it is retried from its own page)", async () => {
+    const extensionJob = { ...failedJob, type: "extension" };
+    apiMocks.getAdminJob.mockResolvedValue(extensionJob);
+    apiMocks.getAdminJobs.mockResolvedValue({ jobs: [extensionJob], total: 1, page: 1, limit: 50 });
+    renderWithClient(
+      <MemoryRouter initialEntries={["/admin/jobs/job-1"]}>
+        <Routes>
+          <Route path="/admin/jobs/:id" element={<JobDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    expect((await screen.findAllByText(/extension/)).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
+    cleanup();
+    renderWithClient(
+      <MemoryRouter>
+        <JobManagementPage />
+      </MemoryRouter>
+    );
+    expect(await screen.findAllByText(/extension/)).not.toHaveLength(0);
+    expect(screen.queryByTitle("Retry")).toBeNull();
+  });
+
   it("locks the detail retry action while retry is pending", async () => {
     let resolveRetry!: (value: unknown) => void;
     let resolveJobRefetch!: (value: unknown) => void;

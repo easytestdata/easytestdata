@@ -114,17 +114,19 @@ export function JobDetailPage() {
               Cancel
             </Button>
           )}
-          {["failed", "failed_with_orphans"].includes(job.status) && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={actionPending}
-              onClick={() => runJobAction(() => retryMut.mutate())}
-            >
-              <RotateCcw className="h-3.5 w-3.5 mr-1" />
-              Retry
-            </Button>
-          )}
+          {["failed", "failed_with_orphans"].includes(job.status) &&
+            // An extension job is retried from its own page (the API refuses it here).
+            job.type !== "extension" && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={actionPending}
+                onClick={() => runJobAction(() => retryMut.mutate())}
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                Retry
+              </Button>
+            )}
           {job.status === "running" && (
             <Button
               size="sm"

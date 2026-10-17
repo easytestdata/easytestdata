@@ -370,18 +370,20 @@ export function JobManagementPage() {
                               <XCircle className="h-3.5 w-3.5" />
                             </Button>
                           )}
-                          {["failed", "failed_with_orphans"].includes(job.status) && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0"
-                              title="Retry"
-                              disabled={actionPending}
-                              onClick={() => runJobAction(job.id, retryMut.mutate)}
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
+                          {["failed", "failed_with_orphans"].includes(job.status) &&
+                            // An extension job is retried from its own page (the API refuses it here).
+                            job.type !== "extension" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                title="Retry"
+                                disabled={actionPending}
+                                onClick={() => runJobAction(job.id, retryMut.mutate)}
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           {job.status === "running" && (
                             <Button
                               size="sm"

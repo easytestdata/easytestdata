@@ -340,6 +340,18 @@ function failureMessage(signal, err, fallback) {
   return err instanceof Error ? err.message : fallback;
 }
 
+// A handler's partial result as JSON, or null when it can't be serialized (a circular object, a
+// BigInt): the job must still reach a final status.
+function resultJson(value, jobId) {
+  if (value === undefined || value === null) return null;
+  try {
+    return JSON.stringify(value);
+  } catch (err) {
+    logger.error({ err, jobId }, "Extension job result could not be saved");
+    return JSON.stringify({ resultError: "The job's result could not be saved." });
+  }
+}
+
 // Ends an extension job that stopped because it was cancelled, keeping whatever partial result
 // its handler attached. A cancel that drained past the timeout was already failed with the timeout
 // flag: it still ends cancelled, without the timeout's error or flag.
@@ -378,6 +390,7 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
 
   let lock = null;
   let started = false;
+  let targetUsed = false;
   try {
     let target = null;
     if (handler.needsSandbox) {
@@ -394,7 +407,7 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
         signal,
         minorVersion: "75"
       });
-      target = createSandboxTarget(client, { signal });
+      target = createSandboxTarget(client, { signal, onUse: () => (targetUsed = true) });
     }
 
     const ctx = Object.freeze({
@@ -406,6 +419,19 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
       progress: (step, totalSteps, message) => emit({ step, totalSteps, message }),
       target
     });
+    // Stopped while waiting for the connection lock or building the target: never start the
+    // handler (a handler that only listens for "abort" would never hear one already sent).
+    if (signal.aborted) {
+      if (signal.reason instanceof JobShutdownError) {
+        // A shutdown before the work began: run it again after the restart.
+        await query(
+          "UPDATE jobs SET status = 'pending', started_at = NULL WHERE id = $1 AND status = 'running'",
+          [jobId]
+        );
+        return;
+      }
+      throw new Error("Stopped before it started");
+    }
     started = true;
     let outcome;
     try {
@@ -413,7 +439,9 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
     } finally {
       await flushProgress();
     }
-    if (target) {
+    // Only a job that really talked to the sandbox counts as connection activity (the token
+    // keepalive and health read last_used_at).
+    if (targetUsed) {
       await query("UPDATE qbo_connections SET last_used_at = NOW() WHERE id = $1", [
         job.connection_id
       ]);
@@ -425,13 +453,24 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
     }
     const result = outcome?.result ?? {};
     const entityCount = Number.isInteger(outcome?.entityCount) ? outcome.entityCount : 0;
-    if (!(await markJobCompleted(jobId, result, entityCount))) {
+    let completed;
+    try {
+      completed = await markJobCompleted(jobId, result, entityCount);
+    } catch (err) {
+      // An unserializable result: complete without it rather than leave the job running.
+      logger.error({ err, jobId }, "Extension job result could not be saved");
+      completed = await markJobCompleted(
+        jobId,
+        { resultError: "The job's result could not be saved." },
+        entityCount
+      );
+    }
+    if (!completed) {
       // Not running any more: a cancel landed before its signal did.
-      await markExtensionCancelled(jobId, JSON.stringify(result));
+      await markExtensionCancelled(jobId, resultJson(result, jobId));
     }
   } catch (err) {
-    const partial =
-      err?.result === undefined || err.result === null ? null : JSON.stringify(err.result);
+    const partial = resultJson(err?.result, jobId);
     if (isCancelled(signal)) {
       await markExtensionCancelled(jobId, partial);
       return;

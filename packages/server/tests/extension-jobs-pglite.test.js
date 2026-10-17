@@ -437,7 +437,11 @@ describe("extension jobs on PGlite", () => {
   });
 
   it("stamps sandbox activity even when the handler fails after using it", async () => {
-    vi.spyOn(QboClient.prototype, "request").mockResolvedValue({ QueryResponse: {} });
+    // Stands in for a request really sent: the client reports it before the HTTP call.
+    vi.spyOn(QboClient.prototype, "request").mockImplementation(async function () {
+      this.onRequestSent?.();
+      return { QueryResponse: {} };
+    });
     register({
       copy: {
         needsSandbox: true,

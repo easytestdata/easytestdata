@@ -86,6 +86,8 @@ export class QboClient {
     this.onRateLimitWait = null;
     this.onTokenRefresh = cfg.onTokenRefresh || null;
     this.onWarning = cfg.onWarning || null;
+    // Called just before each HTTP request to QuickBooks is sent (not for one refused first).
+    this.onRequestSent = cfg.onRequestSent || null;
     this.signal = cfg.signal || null;
   }
 
@@ -216,6 +218,7 @@ export class QboClient {
       };
 
       try {
+        this.onRequestSent?.();
         const response = await axios.request({
           method,
           url,

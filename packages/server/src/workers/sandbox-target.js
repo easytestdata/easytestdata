@@ -22,20 +22,11 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
  * sandbox-only QboClient (buildLockedQboClient), built by the job runner inside the job's
  * connection lock and bound to the job's signal. It reaches only that sandbox.
  */
-export function createSandboxTarget(rawClient, { signal, onUse = () => {} } = {}) {
+export function createSandboxTarget(client, { signal, onUse = () => {} } = {}) {
   let closed = false;
-  // The client as the methods see it: the same client, except that a request about to be sent
-  // reports that the sandbox was used (a call refused before that, such as an invalid entity
-  // name, does not count). Its state stays on the real client.
-  const client = Object.create(rawClient, {
-    request: {
-      value: (...args) => {
-        // A call made after the job was stopped is refused before anything is sent.
-        if (!signal?.aborted) onUse();
-        return rawClient.request(...args);
-      }
-    }
-  });
+  // The sandbox counts as used only when a request is really sent: not for a call refused
+  // first (an invalid entity name, or one made after the job was stopped).
+  client.onRequestSent = onUse;
   const inFlight = new Set();
   const numbered = (items) => items.map((item, index) => ({ ...item, originalIndex: index }));
   const methods = {
@@ -104,7 +95,7 @@ export function createSandboxTarget(rawClient, { signal, onUse = () => {} } = {}
       }
     ])
   );
-  const target = Object.freeze({ realmId: rawClient.cfg.qboRealmId, ...used });
+  const target = Object.freeze({ realmId: client.cfg.qboRealmId, ...used });
   /** Refuses further calls and resolves once the ones already started have settled. */
   async function close() {
     closed = true;

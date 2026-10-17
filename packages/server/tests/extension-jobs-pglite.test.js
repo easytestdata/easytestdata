@@ -450,6 +450,64 @@ describe("extension jobs on PGlite", () => {
     expect(conn.rows[0].last_used_at).not.toBeNull();
   });
 
+  it("counts no sandbox activity for a call refused before anything is sent", async () => {
+    const request = vi.spyOn(QboClient.prototype, "request");
+    register({
+      copy: {
+        needsSandbox: true,
+        run: async (ctx) => {
+          await expect(ctx.target.create("Not An Entity", {})).rejects.toThrow(
+            "Invalid QuickBooks entity"
+          );
+          return { result: {} };
+        }
+      }
+    });
+    const team = await createTeam("refusedcall");
+    const { id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    });
+    await run(id);
+    expect((await job(id)).status).toBe("completed");
+    expect(request).not.toHaveBeenCalled();
+    const conn = await db.query("SELECT last_used_at FROM qbo_connections WHERE id = $1", [
+      team.connectionId
+    ]);
+    expect(conn.rows[0].last_used_at).toBeNull();
+  });
+
+  it("lets a call the handler left running finish before the job is ended", async () => {
+    let id;
+    let statusDuringCall;
+    vi.spyOn(QboClient.prototype, "request").mockImplementation(async () => {
+      await tick(50);
+      statusDuringCall = (await job(id)).status;
+      return { QueryResponse: {} };
+    });
+    register({
+      copy: {
+        needsSandbox: true,
+        run: async (ctx) => {
+          ctx.target.query("select * from Customer"); // not awaited
+          return { result: {} };
+        }
+      }
+    });
+    const team = await createTeam("leftrunning");
+    ({ id } = await api.enqueueExtensionJob({
+      teamId: team.teamId,
+      connectionId: team.connectionId,
+      extension: "demo",
+      kind: "copy"
+    }));
+    await run(id);
+    expect(statusDuringCall).toBe("running");
+    expect((await job(id)).status).toBe("completed");
+  });
+
   it("hides an unexpected setup error's details (unreadable stored tokens)", async () => {
     register({ copy: { needsSandbox: true, run: vi.fn() } });
     const team = await createTeam("badtokens");

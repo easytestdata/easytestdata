@@ -118,10 +118,12 @@ function isCancelled(signal) {
  * load that stopped after the grace period is never lost. Returns whether the job was updated.
  */
 async function markJobFailed(jobId, message, options = {}) {
-  const { status = "failed", result = null, upgradeTimedOut = false } = options;
+  const { status = "failed", result = null, upgradeTimedOut = false, exceptCancelling } = options;
+  // exceptCancelling: a job a cancel reached is left for the cancel path to end.
+  const open = exceptCancelling ? "('pending', 'running')" : OPEN_STATUSES;
   const guard = upgradeTimedOut
-    ? `(status IN ${OPEN_STATUSES} OR ${TIMED_OUT_FAILED})`
-    : `status IN ${OPEN_STATUSES}`;
+    ? `(status IN ${open} OR ${TIMED_OUT_FAILED})`
+    : `status IN ${open}`;
   const updated = await query(
     `UPDATE jobs SET status = $1, error = $2, result = COALESCE($3, result), completed_at = NOW()
      WHERE id = $4 AND ${guard}`,
@@ -341,29 +343,35 @@ function failureMessage(signal, err, fallback) {
   return err instanceof Error ? err.message : fallback;
 }
 
-// A handler's partial result as JSON, or null when it can't be serialized (a circular object, a
-// BigInt): the job must still reach a final status.
+const UNSAVED_RESULT = { resultError: "The job's result could not be saved." };
+
+// A handler's result as JSON, or null when there is none. One that can't be serialized (a
+// circular object, a BigInt) is replaced by UNSAVED_RESULT: the job must still reach a final status.
 function resultJson(value, jobId) {
   if (value === undefined || value === null) return null;
   try {
     return JSON.stringify(value);
   } catch (err) {
     logger.error({ err, jobId }, "Extension job result could not be saved");
-    return JSON.stringify({ resultError: "The job's result could not be saved." });
+    return JSON.stringify(UNSAVED_RESULT);
   }
 }
 
 // Ends an extension job that stopped because it was cancelled, keeping whatever partial result
 // its handler attached. A cancel that drained past the timeout was already failed with the timeout
 // flag: it still ends cancelled, without the timeout's error or flag.
-async function markExtensionCancelled(jobId, result) {
+// onlyCancelling: end it only if a cancel reached it (the failure path lost to that cancel).
+async function markExtensionCancelled(jobId, result, { onlyCancelling = false } = {}) {
+  const guard = onlyCancelling
+    ? "status = 'cancelling'"
+    : `(status IN ${OPEN_STATUSES} OR ${TIMED_OUT_FAILED})`;
   await query(
     `UPDATE jobs
      SET status = 'cancelled', error = NULL, completed_at = NOW(),
          result = CASE WHEN $2::jsonb IS NOT NULL THEN $2::jsonb
                        WHEN result->>'timedOut' = 'true' THEN NULL
                        ELSE result END
-     WHERE id = $1 AND (status IN ${OPEN_STATUSES} OR ${TIMED_OUT_FAILED})`,
+     WHERE id = $1 AND ${guard}`,
     [jobId, result]
   );
 }
@@ -390,7 +398,6 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
   }
 
   let lock = null;
-  let started = false;
   let targetUsed = false;
   let closeTarget = async () => {};
   try {
@@ -444,11 +451,13 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
       }
       throw new Error("Stopped before it started");
     }
-    started = true;
     let outcome;
     try {
       outcome = await handler.run(ctx);
     } finally {
+      // The target closes as soon as the handler settles (calls it left running finish first),
+      // so nothing reaches the sandbox while the job is being ended.
+      await closeTarget();
       await flushProgress();
     }
     // Stopped (cancel, timeout, shutdown or force-fail) while the handler was finishing: the job
@@ -456,34 +465,17 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
     if (signal.aborted) {
       throw Object.assign(new Error("Stopped"), { result: outcome?.result ?? null });
     }
-    const result = outcome?.result ?? {};
+    const json = resultJson(outcome?.result ?? {}, jobId);
+    const result = JSON.parse(json);
     const entityCount = Number.isInteger(outcome?.entityCount) ? outcome.entityCount : 0;
-    let completed;
-    try {
-      completed = await markJobCompleted(jobId, result, entityCount);
-    } catch (err) {
-      // An unserializable result: complete without it rather than leave the job running.
-      logger.error({ err, jobId }, "Extension job result could not be saved");
-      completed = await markJobCompleted(
-        jobId,
-        { resultError: "The job's result could not be saved." },
-        entityCount
-      );
-    }
+    const completed = await markJobCompleted(jobId, result, entityCount);
     if (!completed) {
       // Not running any more: a cancel landed before its signal did.
-      await markExtensionCancelled(jobId, resultJson(result, jobId));
+      await markExtensionCancelled(jobId, json);
     }
   } catch (err) {
     const partial = resultJson(err?.result, jobId);
-    // A cancel the watcher has not seen yet still wins over the error.
-    const cancelRequested =
-      isCancelled(signal) ||
-      (await query("SELECT status FROM jobs WHERE id = $1", [jobId]).then(
-        (r) => r.rows[0]?.status === "cancelling",
-        () => false
-      ));
-    if (cancelRequested) {
+    if (isCancelled(signal)) {
       await markExtensionCancelled(jobId, partial);
       return;
     }
@@ -496,7 +488,13 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
       logger.error({ err, jobId, extension, kind }, "Extension job failed");
       message = "The job failed. See the server log for details.";
     }
-    await markJobFailed(jobId, message, { result: partial, upgradeTimedOut: partial !== null });
+    const failed = await markJobFailed(jobId, message, {
+      result: partial,
+      upgradeTimedOut: partial !== null,
+      exceptCancelling: true
+    });
+    // A cancel the watcher had not seen yet wins over the error, decided by that one update.
+    if (!failed) await markExtensionCancelled(jobId, partial, { onlyCancelling: true });
   } finally {
     // No call outlives the job: the target refuses new ones and calls still running finish
     // before the lock is released.

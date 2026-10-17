@@ -62,6 +62,19 @@ function chunkItems(items) {
   return chunks;
 }
 
+// QuickBooks' reason for a failed batch item: each error's Message plus its Detail, which often
+// carries the actual cause ("... try again in 30 minutes").
+function faultMessage(fault, fallback) {
+  const errors = normalizeArray(fault?.Error);
+  const text = errors
+    .map((e) => {
+      const message = e.Message || "Unknown";
+      return e.Detail && e.Detail !== e.Message ? `${message}: ${e.Detail}` : message;
+    })
+    .join("; ");
+  return text || fallback;
+}
+
 function cancelledError(message, partial) {
   const err = new Error(message);
   err.partial = partial;
@@ -109,8 +122,7 @@ export async function batchCreate(client, entityType, items, options = {}) {
           const item = items[idx];
 
           if (resp.Fault) {
-            const errors = normalizeArray(resp.Fault?.Error);
-            const msg = errors.map((e) => e.Message || "Unknown").join("; ") || "Batch item failed";
+            const msg = faultMessage(resp.Fault, "Batch item failed");
             failures.push({ entity: entityLabel || entityKey, ref: item.ref, message: msg });
           } else {
             const entity = resp[entityKey];
@@ -185,9 +197,7 @@ export async function batchDelete(client, entityType, rows, options = {}) {
           if (resp.Fault) {
             const idx = parseInt(resp.bId, 10);
             const row = rows[idx];
-            const errors = normalizeArray(resp.Fault?.Error);
-            const msg =
-              errors.map((e) => e.Message || "Unknown").join("; ") || "Batch delete failed";
+            const msg = faultMessage(resp.Fault, "Batch delete failed");
             failures.push({ entity: entityLabel || entityKey, id: row.Id, message: msg });
           } else {
             deletedCount++;
@@ -243,9 +253,7 @@ export async function batchUpdate(client, entityType, items, options = {}) {
           if (resp.Fault) {
             const idx = parseInt(resp.bId, 10);
             const item = items[idx];
-            const errors = normalizeArray(resp.Fault?.Error);
-            const msg =
-              errors.map((e) => e.Message || "Unknown").join("; ") || "Batch update failed";
+            const msg = faultMessage(resp.Fault, "Batch update failed");
             failures.push({
               entity: entityLabel || entityKey,
               id: item.payload?.Id,

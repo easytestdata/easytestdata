@@ -39,6 +39,7 @@ export function validateExtensions(extensions) {
         throw new Error(`Extension ${extension.name} ${hook} must be a function`);
       }
     }
+    validateJobs(extension);
     if (
       extension.migrationsDir !== undefined &&
       (typeof extension.migrationsDir !== "string" || extension.migrationsDir.trim() === "")
@@ -47,6 +48,45 @@ export function validateExtensions(extensions) {
     }
   }
   return extensions;
+}
+
+export const MAX_EXTENSION_JOB_MINUTES = 240;
+
+function isPlainObject(value) {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    [Object.prototype, null].includes(Object.getPrototypeOf(value))
+  );
+}
+
+// `jobs`: { [kind]: { run(ctx), needsSandbox, timeoutMinutes? } }, run by the shared job runner.
+function validateJobs(extension) {
+  if (extension.jobs === undefined) return;
+  if (!isPlainObject(extension.jobs)) {
+    throw new Error(`Extension ${extension.name} jobs must be a plain object`);
+  }
+  for (const [kind, job] of Object.entries(extension.jobs)) {
+    if (!EXTENSION_NAME.test(kind)) {
+      throw new Error(`Extension ${extension.name} job kind ${kind} must match ${EXTENSION_NAME}`);
+    }
+    if (!isPlainObject(job) || typeof job.run !== "function") {
+      throw new Error(`Extension ${extension.name} job ${kind} must have a run function`);
+    }
+    if (typeof job.needsSandbox !== "boolean") {
+      throw new Error(`Extension ${extension.name} job ${kind} needsSandbox must be a boolean`);
+    }
+    if (
+      job.timeoutMinutes !== undefined &&
+      (!Number.isInteger(job.timeoutMinutes) ||
+        job.timeoutMinutes < 1 ||
+        job.timeoutMinutes > MAX_EXTENSION_JOB_MINUTES)
+    ) {
+      throw new Error(
+        `Extension ${extension.name} job ${kind} timeoutMinutes must be an integer from 1 to ${MAX_EXTENSION_JOB_MINUTES}`
+      );
+    }
+  }
 }
 
 export function migrationTableName(name) {

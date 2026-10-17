@@ -93,7 +93,8 @@ export function jobRoutes() {
                   'note', result->'note'
                 ) ELSE NULL END AS result_summary,
                 ${ROLLED_BACK}
-         FROM jobs WHERE team_id = $1 ORDER BY created_at DESC LIMIT 50`,
+         FROM jobs WHERE team_id = $1 AND type <> 'extension'
+         ORDER BY created_at DESC LIMIT 50`,
         [req.user.teamId]
       );
       res.json(result.rows);

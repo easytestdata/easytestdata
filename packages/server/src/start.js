@@ -9,6 +9,7 @@ import { runMigrations } from "./db/migrate.js";
 import { closeDatabase, lockDatabase } from "./db/pool.js";
 import { createApp } from "./server.js";
 import { startJobRunner } from "./workers/runner.js";
+import { registerExtensionJobs } from "./workers/extension-jobs.js";
 import { bootstrapAdminsAtStartup } from "./services/admin-bootstrap.js";
 import { ensureLocalSecrets } from "./local/secrets.js";
 import { ensureLocalIdentity } from "./local/identity.js";
@@ -206,6 +207,7 @@ export async function bootstrap({
       registeredExtensions.push(extension);
       if (lockLost) throw lockLost;
     }
+    registerExtensionJobs(extensions);
     runner = await startJobRunner();
 
     // ADMIN_EMAILS: make matching existing users admins (Cloud only; local mode has no admins).

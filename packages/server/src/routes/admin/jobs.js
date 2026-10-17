@@ -153,6 +153,11 @@ export function jobRoutes() {
         return res.status(404).json({ error: "Job not found or not retryable" });
 
       const job = jobResult.rows[0];
+      // An extension job (a Pro copy, for example) is restarted from its own page, which
+      // rebuilds what it needs; replaying its row here would skip that.
+      if (job.type === "extension") {
+        return res.status(409).json({ error: "Retry this job from its own page." });
+      }
       const newJob = await insertLimitedJob({
         teamId: job.team_id,
         connectionId: job.connection_id,

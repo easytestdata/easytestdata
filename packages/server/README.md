@@ -45,6 +45,7 @@ An extension descriptor is a plain object with a required unique `name` matching
 | `onStart({ config, logger })`    | Awaited during startup, in descriptor order                                                 |
 | `onStopping({ config, logger })` | Signals cancellation and refuses new work before HTTP drain; must not await operation drain |
 | `onStop({ config, logger })`     | Awaits operation drain and persistence before database closure                              |
+| `jobs`                           | `{ [kind]: { run(ctx), needsSandbox, timeoutMinutes? } }`, run by the shared job runner     |
 
 Descriptors are validated before startup side effects. Routers mount in descriptor order after
 built-in API routes and before the SPA and error handler. Global middleware still applies,
@@ -98,6 +99,13 @@ process:
 | Errors                    | `AppError`                                                             |
 | Logging                   | `logger`                                                               |
 | Configuration             | `config`                                                               |
+| Extension jobs            | `enqueueExtensionJob`, `getExtensionJob`, `cancelExtensionJob`         |
+
+An extension job is a `jobs` row of type `extension` (`config = { extension, kind, payload }`),
+queued with `enqueueExtensionJob` under the same guards as every job and run in the QuickBooks lane.
+A `needsSandbox` handler receives `ctx.target`, a frozen object over a locked, sandbox-only client
+(minor version 75): the only way an extension writes to QuickBooks. `AGENTS.md` ("Extension jobs")
+has the full contract and outcome rules.
 
 The API does not export `QboClient`, `buildLockedQboClient` or a general raw company HTTP helper.
 `withConnectionLock(connectionId, fn)` fails immediately with `ConnectionLockBusyError` when the

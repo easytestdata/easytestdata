@@ -7,3 +7,8 @@ export { lockTeam } from "./services/connection-guard.js";
 export { AppError } from "./errors.js";
 export { logger } from "./logger.js";
 export { config } from "./config.js";
+export {
+  enqueueExtensionJob,
+  getExtensionJob,
+  cancelExtensionJob
+} from "./services/extension-jobs-api.js";

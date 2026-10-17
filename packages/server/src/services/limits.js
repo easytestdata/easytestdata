@@ -27,7 +27,7 @@ export async function getMonthlyUsage(teamId) {
     `SELECT COUNT(*) FILTER (WHERE type = 'load')::int AS loads,
             COALESCE(SUM(entity_count) FILTER (WHERE status = 'completed'), 0)::int AS entities
      FROM jobs
-     WHERE team_id = $1 AND created_at >= date_trunc('month', NOW())`,
+     WHERE team_id = $1 AND type <> 'extension' AND created_at >= date_trunc('month', NOW())`,
     [teamId]
   );
   return rows[0];

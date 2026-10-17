@@ -54,7 +54,8 @@ describe("extension migrations on PGlite", () => {
     await db.query("INSERT INTO widgets (label, extra) VALUES ('kept', 'also kept')");
     await migrate([extension, second]);
     expect((await db.query("SELECT name FROM _migrations ORDER BY id")).rows).toEqual([
-      { name: "001_initial_schema.sql" }
+      { name: "001_initial_schema.sql" },
+      { name: "002_extension_jobs.sql" }
     ]);
     expect((await db.query("SELECT name FROM _migrations_demo_ext ORDER BY id")).rows).toEqual([
       { name: "001_widgets.sql" }
@@ -71,8 +72,8 @@ describe("extension migrations on PGlite", () => {
       { label: "kept", extra: "also kept" }
     ]);
     expect(logger.info).toHaveBeenCalledWith(
-      { table: "_migrations", count: 1 },
-      "Applied 1 migration(s)"
+      { table: "_migrations", count: 2 },
+      "Applied 2 migration(s)"
     );
     expect(logger.info).toHaveBeenCalledWith(
       { table: "_migrations_demo_ext", count: 0 },

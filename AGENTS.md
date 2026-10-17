@@ -215,17 +215,18 @@ database. These are JavaScript entry points with no declaration-file promise; th
 `@easytestdata/server/extension` has exactly these named exports, each the same binding used by
 the internal server modules (one config, logger, database adapter and connection-lock map per process):
 
-| Source                         | Exports                                                                |
-| ------------------------------ | ---------------------------------------------------------------------- |
-| `db/pool.js`                   | `query`, `transaction`, `rollback`                                     |
-| `crypto/tokens.js`             | `encryptTokenPair`, `decryptTokenPair`, `encryptValue`, `decryptValue` |
-| `auth/oauth-state.js`          | `beginOAuthState`, `consumeOAuthState`, `OAuthStateError`              |
-| `middleware/auth.js`           | `authenticate`, `requireRole`, `requireTeamManager`                    |
-| `services/connection-lock.js`  | `withConnectionLock`, `ConnectionLockBusyError`                        |
-| `services/connection-guard.js` | `lockTeam`                                                             |
-| `errors.js`                    | `AppError`                                                             |
-| `logger.js`                    | `logger`                                                               |
-| `config.js`                    | `config`                                                               |
+| Source                           | Exports                                                                |
+| -------------------------------- | ---------------------------------------------------------------------- |
+| `db/pool.js`                     | `query`, `transaction`, `rollback`                                     |
+| `crypto/tokens.js`               | `encryptTokenPair`, `decryptTokenPair`, `encryptValue`, `decryptValue` |
+| `auth/oauth-state.js`            | `beginOAuthState`, `consumeOAuthState`, `OAuthStateError`              |
+| `middleware/auth.js`             | `authenticate`, `requireRole`, `requireTeamManager`                    |
+| `services/connection-lock.js`    | `withConnectionLock`, `ConnectionLockBusyError`                        |
+| `services/connection-guard.js`   | `lockTeam`                                                             |
+| `errors.js`                      | `AppError`                                                             |
+| `logger.js`                      | `logger`                                                               |
+| `config.js`                      | `config`                                                               |
+| `services/extension-jobs-api.js` | `enqueueExtensionJob`, `getExtensionJob`, `cancelExtensionJob`         |
 
 Keep this key set exact. Do not expose `QboClient`, `buildLockedQboClient` or a general raw company
 HTTP helper. Extensions use the existing transaction client and row-lock order described below.
@@ -243,6 +244,8 @@ Each descriptor is a plain object with a required unique `name` matching
 - `onStopping({ config, logger })`: signals cancellation and refuses new extension work before HTTP
   drain; it must not await operation drain.
 - `onStop({ config, logger })`: awaits operation drain and persistence before database closure.
+- `jobs`: `{ [kind]: { run(ctx), needsSandbox: boolean, timeoutMinutes? } }` (kind matches the
+  name pattern; `timeoutMinutes` 1-240, default the QBO job timeout). See **Extension jobs** below.
 
 Descriptors are validated before startup side effects. Routers mount in descriptor order after
 the built-in API routes and before the SPA and error handler, behind the existing global middleware
@@ -280,9 +283,35 @@ contiguous, unique numeric prefixes and filenames matching `/^\d{3}_[a-z0-9_]+\.
 lexically, each atomically with its tracking row. Core owns `_migrations`; an extension owns
 `_migrations_<name with hyphens replaced by underscores>`. Missing files for recorded migrations
 are refused. Applied files are immutable: add a new migration, never rename, remove or edit an
-applied one (tracking records names, not content hashes). Do not alter core tables, job types or
-sandbox assertions to add an extension. Keep the contract tests and packed-install import check
-in step with any intentional API change.
+applied one (tracking records names, not content hashes). Extensions add job kinds only through
+`jobs`; never alter core tables or sandbox assertions to add an extension. Keep the contract tests
+and packed-install import check in step with any intentional API change.
+
+### Extension jobs
+
+`enqueueExtensionJob({ teamId, createdBy, connectionId = null, extension, kind, payload, check })`
+inserts a `jobs` row of type `extension` with `config = { extension, kind, payload }` through
+`insertLimitedJob` (connection guard: 404 missing / 409 disconnected sandbox; `check` under the
+team and connection locks; the one-active-QBO-job index, which migration `002_extension_jobs.sql`
+extends to `extension`, → 409; no monthly load limit) and wakes the runner; it resolves `{ id }`.
+`getExtensionJob(teamId, jobId)` and `cancelExtensionJob(teamId, jobId)` are team-scoped and only
+see `extension` rows. `POST /jobs` never accepts the type; `GET /jobs`, `GET /jobs/usage` and the
+monthly usage exclude these rows; the admin retry refuses them (409).
+
+The runner runs them in the QBO lane (`QBO_JOB_TYPES`), before any scenario parsing, under the
+handler's `timeoutMinutes` (read before the timer starts). It claims the row, and for
+`needsSandbox` takes the connection lock and builds a **sandbox target**
+(`workers/sandbox-target.js`): a frozen object over `buildLockedQboClient(conn, credentials,
+{ signal, minorVersion: "75" })` with `realmId, query, read, create, update, remove,
+batchCreate, batchUpdate, upload, report, preferences, updatePreferences, removeRecurring,
+clearSandbox`. It reaches only that sandbox and is the only way an extension writes to QuickBooks.
+Then `run(ctx)` with a frozen `ctx = { jobId, teamId, createdBy, config (the payload), signal,
+progress(step, totalSteps, message), target }` (`target` is `null` without `needsSandbox`).
+Outcome: resolving `{ result, entityCount }` completes the job; a throw fails it with an
+`AppError`'s message (any other error is logged and shown as "The job failed. See the server log
+for details.") and keeps the error's `result`; a cancel ends it `cancelled` with that `result`; a
+row naming no registered handler fails with "This server cannot run this job (missing extension
+<name>/<kind>)."
 
 ## Key Patterns
 

@@ -14,6 +14,9 @@ import {
 } from "../services/scenario-config.js";
 import { enforceWorkerExecutionLimits } from "../services/limits.js";
 import { getQboCredentials, qboNotConfiguredError } from "../services/app-settings.js";
+import { AppError } from "../errors.js";
+import { extensionJobTimeoutMs, resolveExtensionJob } from "./extension-jobs.js";
+import { createSandboxTarget } from "./sandbox-target.js";
 import {
   removeJobArtifacts,
   writeJobArtifact,
@@ -220,8 +223,15 @@ function watchForCancellation(jobId, controller, pollMs) {
  * retried.
  */
 export async function processJob({ jobId, kind }, options = {}) {
+  // An extension job's registered timeout replaces its lane's default; it is read before the
+  // timer starts.
   const timeoutMs =
-    options.timeoutMs ?? (kind === "local" ? config.jobs.localTimeoutMs : config.jobs.qboTimeoutMs);
+    options.timeoutMs ??
+    (await extensionJobTimeoutMs(jobId).catch((err) => {
+      logger.warn({ err, jobId }, "Could not read an extension job's timeout");
+      return null;
+    })) ??
+    (kind === "local" ? config.jobs.localTimeoutMs : config.jobs.qboTimeoutMs);
   const graceMs = options.timeoutGraceMs ?? config.jobs.timeoutGraceMs;
   const controller = new AbortController();
   const stopCancelWatch = watchForCancellation(
@@ -320,6 +330,103 @@ function failureMessage(signal, err, fallback) {
   return err instanceof Error ? err.message : fallback;
 }
 
+// Ends an extension job that stopped because it was cancelled, keeping whatever partial result
+// its handler attached to the error.
+async function markExtensionCancelled(jobId, result) {
+  await query(
+    `UPDATE jobs SET status = 'cancelled', result = COALESCE($2, result), completed_at = NOW()
+     WHERE id = $1 AND (status IN ${OPEN_STATUSES} OR ${TIMED_OUT_FAILED})`,
+    [jobId, result]
+  );
+}
+
+/**
+ * Runs an extension job: claims it, and for a handler that needsSandbox takes the connection
+ * lock and builds the sandbox target (a locked, sandbox-only client at minor version 75), then
+ * calls the handler's run(ctx). Its resolved { result, entityCount } completes the job; a throw
+ * fails it (an AppError's message is shown, any other error is logged and replaced by a generic
+ * message) and keeps the error's `result`; a cancel ends it cancelled with that result.
+ */
+async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWaitMs }) {
+  const jobId = job.id;
+  const { extension, kind, payload, handler } = resolveExtensionJob(job.config);
+  // Stopped before it started (a shutdown): stay pending and run after the restart.
+  if (signal.aborted) return;
+  if (!(await claim())) return;
+  if (!handler) {
+    await markJobFailed(
+      jobId,
+      `This server cannot run this job (missing extension ${extension}/${kind}).`
+    );
+    return;
+  }
+
+  let lock = null;
+  let started = false;
+  try {
+    let target = null;
+    if (handler.needsSandbox) {
+      if (!job.connection_id) throw new Error("This job needs a sandbox connection.");
+      const credentials = await getQboCredentials();
+      if (!credentials) throw qboNotConfiguredError();
+      lock = await acquireConnectionLock(job.connection_id, { waitMs: lockWaitMs });
+      const conn = await query("SELECT * FROM qbo_connections WHERE id = $1 AND team_id = $2", [
+        job.connection_id,
+        job.team_id
+      ]);
+      if (conn.rows.length === 0) throw new Error("QBO connection not found");
+      const client = buildLockedQboClient(conn.rows[0], credentials, {
+        signal,
+        minorVersion: "75"
+      });
+      target = createSandboxTarget(client, { signal });
+    }
+
+    const ctx = Object.freeze({
+      jobId,
+      teamId: job.team_id,
+      createdBy: job.created_by,
+      config: payload,
+      signal,
+      progress: (step, totalSteps, message) => emit({ step, totalSteps, message }),
+      target
+    });
+    started = true;
+    let outcome;
+    try {
+      outcome = await handler.run(ctx);
+    } finally {
+      await flushProgress();
+    }
+    if (target) {
+      await query("UPDATE qbo_connections SET last_used_at = NOW() WHERE id = $1", [
+        job.connection_id
+      ]);
+    }
+    const result = outcome?.result ?? {};
+    const entityCount = Number.isInteger(outcome?.entityCount) ? outcome.entityCount : 0;
+    if (!(await markJobCompleted(jobId, result, entityCount))) {
+      await markExtensionCancelled(jobId, JSON.stringify(result));
+    }
+  } catch (err) {
+    const partial = err?.result === undefined ? null : JSON.stringify(err.result);
+    if (isCancelled(signal)) {
+      await markExtensionCancelled(jobId, partial);
+      return;
+    }
+    let message;
+    if (!started || err instanceof AppError || signal.aborted) {
+      message = failureMessage(signal, err, "Job failed");
+    } else {
+      logger.error({ err, jobId, extension, kind }, "Extension job failed");
+      message = "The job failed. See the server log for details.";
+    }
+    await markJobFailed(jobId, message, { result: partial, upgradeTimedOut: partial !== null });
+  } finally {
+    await releaseConnectionLock(lock);
+  }
+}
+
 async function runJob(jobId, signal, options = {}) {
   const jobResult = await query("SELECT * FROM jobs WHERE id = $1", [jobId]);
   if (jobResult.rows.length === 0) throw new Error(`Job ${jobId} not found`);
@@ -370,6 +477,12 @@ async function runJob(jobId, signal, options = {}) {
     return Boolean(claimed?.rowCount);
   };
   const lockWaitMs = options.lockWaitMs ?? config.jobs.lockWaitMs;
+
+  // Extension jobs carry their own config ({ extension, kind, payload }), not a scenario: they
+  // branch off before scenario parsing and the synthetic-data limits.
+  if (job.type === "extension") {
+    return runExtensionJob(job, signal, { emit, flushProgress, claim, lockWaitMs });
+  }
 
   let connectionLock = null;
 

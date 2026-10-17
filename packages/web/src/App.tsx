@@ -123,10 +123,36 @@ const errorFallback = (
   </div>
 );
 
-/** Invite links go to the invite page; local mode has no teams or invites, so they go home. */
+/**
+ * Invite links go to the invite page; local mode, and a build whose brand turns teams off, have
+ * no invites, so they go home.
+ */
 function InviteRoute() {
   const { deployment } = useAppConfig();
-  return deployment === "local" ? <Navigate to="/home" replace /> : <InvitePage />;
+  return deployment === "local" || brand.teams === false ? (
+    <Navigate to="/home" replace />
+  ) : (
+    <InvitePage />
+  );
+}
+
+// Extension pages that need no sign-in live under /p/, which is theirs alone: a signed-in route
+// there could catch a public address first and send a signed-out visitor to the login page.
+// React Router matches paths case-insensitively, so /P/ counts as /p/.
+const inPublicSpace = (path: string) => {
+  const lower = path.toLowerCase();
+  return lower === "/p" || lower.startsWith("/p/");
+};
+const publicRoutes = extensions.publicRoutes ?? [];
+for (const route of publicRoutes) {
+  if (!inPublicSpace(route.path) || route.path === "/p") {
+    throw new Error(`Public extension route ${route.path} must start with /p/`);
+  }
+}
+for (const route of extensions.routes) {
+  if (inPublicSpace(route.path)) {
+    throw new Error(`Extension route ${route.path} must not use /p/, which is for public pages`);
+  }
 }
 
 /** First-run Intuit keys setup exists only in local mode; Cloud reads the keys from its env. */
@@ -147,6 +173,23 @@ export function App() {
                   <ProductBrandProvider value={brand}>
                     <BrowserRouter>
                       <Routes>
+                        {/* Public extension pages first: when a signed-in pattern ties with a
+                            public one (an optional segment, a parameter), React Router picks the
+                            first declared, so a public page is never sent to the login page. */}
+                        {publicRoutes.map((route) => {
+                          const Element = route.element;
+                          return (
+                            <Route
+                              key={route.path}
+                              path={route.path}
+                              element={
+                                <Suspense fallback={<RouteLoadingFallback />}>
+                                  <Element />
+                                </Suspense>
+                              }
+                            />
+                          );
+                        })}
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/invite" element={<InviteRoute />} />
                         {/* Main app routes */}

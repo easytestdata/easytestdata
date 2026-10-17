@@ -17,6 +17,8 @@ export interface BrandMetadata {
   description: string;
   repoUrl: string | null;
   supportsSourceReads: boolean;
+  // false: one login is one person; Settings hides Team and /invite goes home. Default true.
+  teams?: boolean;
   companionUrl?: string;
   companionLabel?: string;
 }
@@ -27,4 +29,6 @@ export interface WebExtensions {
   // /settings, /setup, /login, /invite or /admin (including their child routes).
   routes: ExtensionRoute[];
   navItems: ExtensionNavItem[];
+  // Pages anyone may open without signing in (no app layout). Paths must start with /p/.
+  publicRoutes?: ExtensionRoute[];
 }

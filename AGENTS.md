@@ -154,6 +154,11 @@ name. Source extensions reserve `source_connected`/`source_error` callback keys;
 toasts still consume `connected`/`error`. Server/marketing branding and shared Cloud-limit messages
 are outside this UI contract.
 
+An extension module may also supply `publicRoutes` (pages anyone can open signed out, mounted
+outside `ProtectedRoute` and the app layout; every path must start with `/p/`, else the app
+refuses to load; signed-in `routes` may not use `/p/`), and brand metadata may set `teams: false` (one person per login: Settings hides
+Team, `/settings/team` goes to `/settings`, `/invite` goes home). Both default to today's behaviour.
+
 A build supplying an external extension module must add Tailwind `@source` lines for its own
 sources in the consuming build's CSS entry. If its root is outside `packages/web`, it must also
 register `packages/web/src` there, using paths relative to that CSS entry.

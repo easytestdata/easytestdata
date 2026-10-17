@@ -30,9 +30,12 @@ vi.mock("@easytestdata/web-extensions", async () => {
       logo: ({ className }) => <svg aria-label="Extension logo" className={className} />,
       routes: [
         { path: "/reports", element: () => <div>reports-page</div> },
-        { path: "/reports/lazy", element: ReportsPage }
+        { path: "/reports/lazy", element: ReportsPage },
+        // An optional segment that also matches the public /p/connect: the public page must win.
+        { path: "/p?/connect", element: () => <div>protected-optional-page</div> }
       ],
-      navItems: [{ path: "/reports", label: "Reports", icon: ChartNoAxesCombined }]
+      navItems: [{ path: "/reports", label: "Reports", icon: ChartNoAxesCombined }],
+      publicRoutes: [{ path: "/p/connect", element: () => <div>public-connect-page</div> }]
     } satisfies WebExtensions
   };
 });
@@ -43,7 +46,8 @@ vi.mock("@easytestdata/web-brand", () => ({
     repoUrl: null,
     supportsSourceReads: true,
     companionUrl: "https://example.com",
-    companionLabel: "Companion"
+    companionLabel: "Companion",
+    teams: false
   }
 }));
 vi.mock("../contexts/SentryContext", () => ({
@@ -76,6 +80,29 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("web extensions", () => {
+  it("serves a public extension page signed out, without the app layout or a login redirect", async () => {
+    renderAt("/p/connect");
+    expect(await screen.findByText("public-connect-page")).toBeTruthy();
+    expect(screen.queryByText("login-page")).toBeNull();
+    expect(screen.queryByText("protected-optional-page")).toBeNull();
+    expect(window.location.pathname).toBe("/p/connect");
+    // Outside the app layout, even for a signed-in user.
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByRole("main")).toBeNull();
+    cleanup();
+    authState.user = { id: "u1", email: "u@example.com", displayName: "U Ser", avatarUrl: null };
+    renderAt("/p/connect");
+    expect(await screen.findByText("public-connect-page")).toBeTruthy();
+    expect(screen.queryByRole("navigation")).toBeNull();
+  });
+
+  it("sends /invite home when the brand turns teams off", async () => {
+    authState.user = { id: "u1", email: "u@example.com", displayName: "U Ser", avatarUrl: null };
+    renderAt("/invite?token=abc");
+    expect(await screen.findByText("home-page")).toBeTruthy();
+    expect(window.location.pathname).toBe("/home");
+  });
+
   it("keeps the bundled fixture paths unique and outside built-in routes", () => {
     for (const items of [extensions.routes, extensions.navItems]) {
       const paths = items.map((item) => item.path);
@@ -154,6 +181,7 @@ describe("web extensions", () => {
       supportsSourceReads: true,
       companionUrl: "https://example.com",
       companionLabel: "Companion",
+      teams: false,
       logo: extensions.logo
     });
     const Logo = brand.logo;

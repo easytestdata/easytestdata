@@ -31,7 +31,7 @@ describe("PGlite adapter", () => {
   it("applies migrations once and reports rowCount like pg", async () => {
     await runMigrations({ closePool: false }); // second run: no-op
     const { rows } = await db.query("SELECT name FROM _migrations ORDER BY id");
-    expect(rows).toEqual([{ name: "001_initial_schema.sql" }]);
+    expect(rows).toEqual([{ name: "001_initial_schema.sql" }, { name: "002_extension_jobs.sql" }]);
     expect((await db.query("UPDATE users SET email = email WHERE false")).rowCount).toBe(0);
     // PGlite reports affectedRows = 0 for a SELECT; pg reports the rows returned.
     expect((await db.query("SELECT * FROM generate_series(1, 3)")).rowCount).toBe(3);

@@ -14,7 +14,15 @@ export const createJobSchema = z.object({
 
 export const estimateJobSchema = z.object({ templateId, config });
 
-export const JOB_TYPES = /** @type {const} */ (["generate", "load", "purge", "export", "rollback"]);
+// "extension" rows are created by server extensions (enqueueExtensionJob), never by POST /jobs.
+export const JOB_TYPES = /** @type {const} */ ([
+  "generate",
+  "load",
+  "purge",
+  "export",
+  "rollback",
+  "extension"
+]);
 
 export const JOB_STATUSES = /** @type {const} */ ([
   "pending",

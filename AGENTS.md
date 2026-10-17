@@ -126,6 +126,7 @@ them working.
 - `loadPlanIntoQbo(client, plan, config, emit, signal)` — 11-phase orchestrator that creates accounts, master data, service items, then all transaction types in dependency order. Existing customers/vendors/employees are reused only when they carry the plan tag (the lookups include inactive records, so ones made inactive by Remove test data or a rollback are reactivated); a generated party whose display name is taken by an untagged record, active or inactive, is created as `Name (TAG)` (then `Name (TAG 2)`, ...), and a later load finds and reuses that tagged record. Service items follow the same rule with their `Description` tag: an untagged item holding the name is never reused or reactivated (`ensureServiceItem` refuses it too). Accounts are reactivated by name, which is safe because every account the load creates is named `TAG ...` (except QBO's standard `Undeposited Funds`). A party QBO refuses to create is listed in the load's `failures` with QBO's reason. The ledger is written per batch and parallel phases settle fully before a failure is rethrown, so `err.ledger` covers every record that exists when a load is cancelled or fails. The ledger includes the accounts, customers, vendors, employees and service items the load created or reactivated, not only transactions
 - `generated-identity.js` — `isGeneratedRecord(entityName, record, tag)`, the one "did we generate this?" rule, used by load reuse/reactivation, Remove test data (generated mode) and `ensureServiceItem` (a rollback acts on its ledger's ids instead). Transactions: `PrivateNote` or `DocNumber` starts with the tag. Master data: its tag field (`MASTER_DATA_TAG_FIELDS`: customer `Notes`, vendor `AcctNum`, employee `EmployeeNumber`, item `Description`) starts with the tag; a tag field holding anything else, or nothing, is not ours, whatever the name. Names are never looked at, so a user's "Amy's Bird Sanctuary" is never taken for tag `AMY`, nor "A-1 Plumbing" for `A`. `tagMatches` is token-aware (`EZTDX` is not `EZTD`); nothing else in the package matches tags (`tests/generated-identity.test.js` is the decision table)
 - `purgeTransactions(client, options, emit, signal)` — ordered deletion with tag-based filtering (mode: "generated" or "all")
+- `clearSandbox(client, { emit, signal })` — empties a sandbox for a copy: deletes every transaction (purge order), recurring template and non-initial inventory adjustment, zeroes initial ("START") adjustments, then makes lists inactive (children first) and accounts last, keeping QuickBooks' system accounts. Records QuickBooks refuses to remove or make inactive (built-in sample accounts and items, terms used as defaults, "Cash") are `leftovers.records`, not failures; the caller measures leftover amounts with reports
 - `rollbackLoad(client, ledger, emit, signal, { keepMasterData })` — deletes the ledger's transactions in reverse dependency order, then makes its items, employees, vendors and customers inactive (QBO cannot delete them; purge inactivates them the same way). Accounts stay in the ledger but are never inactivated, as purge leaves them: QBO may refuse (a balance, an item posting to one) and the rollback could then never succeed. Records already gone or inactive are skipped, so a failed rollback can be retried; the report carries `totalDeleted`, `totalInactivated`, and `keptMasterData` plus a `note` when anything was kept ("QuickBooks accounts are left in place, as "Remove test data" does (N kept)."), so a ledger of only accounts rolls back successfully with that note. With `keepMasterData` it deletes only the transactions; the worker passes it when a later load into the same sandbox (`laterLoadMayUseMasterData`: any team's connection with the same `realm_id`, created after the rolled-back load, status running, cancelling, completed, failed or failed_with_orphans) may be using that master data, and the note points to Remove test data
 - `qbo-repository.js` — entity lookup/creation helpers, paginated queries (re-exports `tagMatches`, `MASTER_DATA_TAG_FIELDS` and `partyTag` from `generated-identity.js`)
 
@@ -219,17 +220,18 @@ database. These are JavaScript entry points with no declaration-file promise; th
 `@easytestdata/server/extension` has exactly these named exports, each the same binding used by
 the internal server modules (one config, logger, database adapter and connection-lock map per process):
 
-| Source                         | Exports                                                                |
-| ------------------------------ | ---------------------------------------------------------------------- |
-| `db/pool.js`                   | `query`, `transaction`, `rollback`                                     |
-| `crypto/tokens.js`             | `encryptTokenPair`, `decryptTokenPair`, `encryptValue`, `decryptValue` |
-| `auth/oauth-state.js`          | `beginOAuthState`, `consumeOAuthState`, `OAuthStateError`              |
-| `middleware/auth.js`           | `authenticate`, `requireRole`, `requireTeamManager`                    |
-| `services/connection-lock.js`  | `withConnectionLock`, `ConnectionLockBusyError`                        |
-| `services/connection-guard.js` | `lockTeam`                                                             |
-| `errors.js`                    | `AppError`                                                             |
-| `logger.js`                    | `logger`                                                               |
-| `config.js`                    | `config`                                                               |
+| Source                           | Exports                                                                |
+| -------------------------------- | ---------------------------------------------------------------------- |
+| `db/pool.js`                     | `query`, `transaction`, `rollback`                                     |
+| `crypto/tokens.js`               | `encryptTokenPair`, `decryptTokenPair`, `encryptValue`, `decryptValue` |
+| `auth/oauth-state.js`            | `beginOAuthState`, `consumeOAuthState`, `OAuthStateError`              |
+| `middleware/auth.js`             | `authenticate`, `requireRole`, `requireTeamManager`                    |
+| `services/connection-lock.js`    | `withConnectionLock`, `ConnectionLockBusyError`                        |
+| `services/connection-guard.js`   | `lockTeam`                                                             |
+| `errors.js`                      | `AppError`                                                             |
+| `logger.js`                      | `logger`                                                               |
+| `config.js`                      | `config`                                                               |
+| `services/extension-jobs-api.js` | `enqueueExtensionJob`, `getExtensionJob`, `cancelExtensionJob`         |
 
 Keep this key set exact. Do not expose `QboClient`, `buildLockedQboClient` or a general raw company
 HTTP helper. Extensions use the existing transaction client and row-lock order described below.
@@ -247,6 +249,8 @@ Each descriptor is a plain object with a required unique `name` matching
 - `onStopping({ config, logger })`: signals cancellation and refuses new extension work before HTTP
   drain; it must not await operation drain.
 - `onStop({ config, logger })`: awaits operation drain and persistence before database closure.
+- `jobs`: `{ [kind]: { run(ctx), needsSandbox: boolean, timeoutMinutes? } }` (kind matches the
+  name pattern; `timeoutMinutes` 1-240, default the QBO job timeout). See **Extension jobs** below.
 
 Descriptors are validated before startup side effects. Routers mount in descriptor order after
 the built-in API routes and before the SPA and error handler, behind the existing global middleware
@@ -284,9 +288,35 @@ contiguous, unique numeric prefixes and filenames matching `/^\d{3}_[a-z0-9_]+\.
 lexically, each atomically with its tracking row. Core owns `_migrations`; an extension owns
 `_migrations_<name with hyphens replaced by underscores>`. Missing files for recorded migrations
 are refused. Applied files are immutable: add a new migration, never rename, remove or edit an
-applied one (tracking records names, not content hashes). Do not alter core tables, job types or
-sandbox assertions to add an extension. Keep the contract tests and packed-install import check
-in step with any intentional API change.
+applied one (tracking records names, not content hashes). Extensions add job kinds only through
+`jobs`; never alter core tables or sandbox assertions to add an extension. Keep the contract tests
+and packed-install import check in step with any intentional API change.
+
+### Extension jobs
+
+`enqueueExtensionJob({ teamId, createdBy, connectionId = null, extension, kind, payload, check })`
+inserts a `jobs` row of type `extension` with `config = { extension, kind, payload }` through
+`insertLimitedJob` (connection guard: 404 missing / 409 disconnected sandbox; `check` under the
+team and connection locks; the one-active-QBO-job index, which migration `002_extension_jobs.sql`
+extends to `extension`, → 409; no monthly load limit) and wakes the runner; it resolves `{ id }`.
+`getExtensionJob(teamId, jobId)` and `cancelExtensionJob(teamId, jobId)` are team-scoped and only
+see `extension` rows. `POST /jobs` never accepts the type; `GET /jobs`, `GET /jobs/usage` and the
+monthly usage exclude these rows; the admin retry refuses them (409).
+
+The runner runs them in the QBO lane (`QBO_JOB_TYPES`), before any scenario parsing, under the
+handler's `timeoutMinutes` (read before the timer starts). It claims the row, and for
+`needsSandbox` takes the connection lock and builds a **sandbox target**
+(`workers/sandbox-target.js`): a frozen object over `buildLockedQboClient(conn, credentials,
+{ signal, minorVersion: "75" })` with `realmId, query, read, create, update, remove,
+batchCreate, batchUpdate, upload, report, preferences, updatePreferences, removeRecurring,
+clearSandbox`. It reaches only that sandbox and is the only way an extension writes to QuickBooks. Once the handler ends, the target refuses further calls, and calls still running finish before the connection lock is released.
+Then `run(ctx)` with a frozen `ctx = { jobId, teamId, createdBy, config (the payload), signal,
+progress(step, totalSteps, message), target }` (`target` is `null` without `needsSandbox`).
+Outcome: resolving `{ result, entityCount }` completes the job; a throw fails it with an
+`AppError`'s message (any other error is logged and shown as "The job failed. See the server log
+for details.") and keeps the error's `result`; a cancel (also one requested but not yet seen by the cancel watcher when an error arrives) ends it `cancelled` with that `result`; a
+row naming no registered handler fails with "This server cannot run this job (missing extension
+<name>/<kind>)."
 
 ## Key Patterns
 

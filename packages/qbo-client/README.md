@@ -82,6 +82,9 @@ in the sandbox company.
 - `loadPlanIntoQbo(client, plan, config?, emit, signal)`: creates accounts, master data, service
   items and all transaction types in dependency order.
 - `purgeTransactions(client, { mode, tag }, emit, signal)`: ordered, tag-filtered deletion.
+- `clearSandbox(client, { emit, signal })`: empties a sandbox before a copy (every transaction,
+  recurring template and inventory adjustment deleted; lists and accounts made inactive). What
+  QuickBooks will not let an app remove is returned in `leftovers.records`, not as failures.
 - `batchCreate` / `batchDelete` / `batchUpdate`: chunked batch operations (30 items per call).
 - `tagMatches(value, tag)`, `MASTER_DATA_TAG_FIELDS`, `QBO_SANDBOX_BASE_URL`.
 

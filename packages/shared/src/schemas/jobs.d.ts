@@ -12,7 +12,14 @@ export declare const estimateJobSchema: z.ZodObject<{
   config: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }>;
 
-export declare const JOB_TYPES: readonly ["generate", "load", "purge", "export", "rollback"];
+export declare const JOB_TYPES: readonly [
+  "generate",
+  "load",
+  "purge",
+  "export",
+  "rollback",
+  "extension"
+];
 
 export declare const JOB_STATUSES: readonly [
   "pending",

@@ -5,7 +5,7 @@ import { abortAndDrainJobs, JobShutdownError, processJob } from "./index.js";
 import { refreshExpiringTokens } from "./token-refresh.js";
 import { cleanupExpiredArtifacts } from "../services/job-artifacts.js";
 
-export const QBO_JOB_TYPES = ["load", "purge", "rollback"];
+export const QBO_JOB_TYPES = ["load", "purge", "rollback", "extension"];
 export const LOCAL_JOB_TYPES = ["generate", "export"];
 
 let wake = () => {};

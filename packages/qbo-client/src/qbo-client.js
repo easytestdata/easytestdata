@@ -23,7 +23,11 @@ function parseQboError(error) {
 export const QBO_SANDBOX_BASE_URL = "https://sandbox-quickbooks.api.intuit.com";
 
 export function assertSandboxBaseUrl(baseUrl) {
-  const normalized = String(baseUrl ?? "").replace(/\/+$/, "");
+  // Trailing slashes trimmed without a regex (a /\/+$/ pattern is quadratic on long input).
+  let normalized = String(baseUrl ?? "");
+  let end = normalized.length;
+  while (end > 0 && normalized[end - 1] === "/") end -= 1;
+  normalized = normalized.slice(0, end);
   if (normalized !== QBO_SANDBOX_BASE_URL) {
     throw new Error(
       `EasyTestData only talks to QuickBooks Online sandbox companies. ` +

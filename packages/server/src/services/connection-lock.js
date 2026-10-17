@@ -108,8 +108,9 @@ export async function withLockedConnection(connectionId, fn) {
  * so refreshes on the same connection are serialized. `credentials` are the Intuit app keys
  * from getQboCredentials() (services/app-settings.js). A job passes its `signal`: the client then
  * starts no QBO request once the job is cancelled, timed out or shut down (QboClient's `signal`).
+ * `minorVersion` is the QBO API minor version its requests send (extension jobs use "75").
  */
-export function buildLockedQboClient(conn, credentials, { signal } = {}) {
+export function buildLockedQboClient(conn, credentials, { signal, minorVersion = "65" } = {}) {
   // A disconnected sandbox has no tokens; every QBO path builds its client here.
   if (conn.disconnected_at) throw new Error(SANDBOX_DISCONNECTED_MESSAGE);
   const tokens = decryptTokenPair(conn.access_token_enc, conn.refresh_token_enc, conn.token_iv);
@@ -125,7 +126,7 @@ export function buildLockedQboClient(conn, credentials, { signal } = {}) {
     qboAccessToken: tokens.accessToken,
     qboRealmId: conn.realm_id,
     qboBaseUrl: conn.base_url,
-    qboMinorVersion: "65",
+    qboMinorVersion: minorVersion,
     signal,
     onTokenRefresh: async ({ accessToken, refreshToken }) => {
       const updated = encryptTokenPair(accessToken, refreshToken);

@@ -156,7 +156,8 @@ async function main() {
           "encryptTokenPair", "decryptTokenPair", "encryptValue", "decryptValue",
           "beginOAuthState", "consumeOAuthState", "OAuthStateError",
           "authenticate", "requireRole", "requireTeamManager",
-          "withConnectionLock", "ConnectionLockBusyError", "lockTeam", "AppError"
+          "withConnectionLock", "ConnectionLockBusyError", "lockTeam", "AppError",
+          "enqueueExtensionJob", "getExtensionJob", "cancelExtensionJob"
         ];
         assert.deepEqual(Object.keys(extension).sort(), [...functions, "config", "logger"].sort());
         for (const name of functions) assert.equal(typeof extension[name], "function", name);

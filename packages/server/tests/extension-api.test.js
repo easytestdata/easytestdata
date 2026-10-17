@@ -20,6 +20,11 @@ import { logger } from "../src/logger.js";
 import { config } from "../src/config.js";
 import { bootstrap, handleShutdownSignals } from "../src/start.js";
 import { runMigrations, runMigrationCommand } from "../src/db/migrate.js";
+import {
+  enqueueExtensionJob,
+  getExtensionJob,
+  cancelExtensionJob
+} from "../src/services/extension-jobs-api.js";
 
 const bindings = {
   query,
@@ -40,7 +45,10 @@ const bindings = {
   lockTeam,
   AppError,
   logger,
-  config
+  config,
+  enqueueExtensionJob,
+  getExtensionJob,
+  cancelExtensionJob
 };
 
 describe("public server extension API", () => {

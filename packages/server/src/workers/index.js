@@ -5,7 +5,8 @@ import { query, transaction } from "../db/pool.js";
 import {
   acquireConnectionLock,
   releaseConnectionLock,
-  buildLockedQboClient
+  buildLockedQboClient,
+  SANDBOX_DISCONNECTED_MESSAGE
 } from "../services/connection-lock.js";
 import {
   buildPlanFromScenario,
@@ -14,6 +15,9 @@ import {
 } from "../services/scenario-config.js";
 import { enforceWorkerExecutionLimits } from "../services/limits.js";
 import { getQboCredentials, qboNotConfiguredError } from "../services/app-settings.js";
+import { AppError } from "../errors.js";
+import { extensionJobTimeoutMs, resolveExtensionJob } from "./extension-jobs.js";
+import { createSandboxTarget } from "./sandbox-target.js";
 import {
   removeJobArtifacts,
   writeJobArtifact,
@@ -220,17 +224,38 @@ function watchForCancellation(jobId, controller, pollMs) {
  * retried.
  */
 export async function processJob({ jobId, kind }, options = {}) {
-  const timeoutMs =
-    options.timeoutMs ?? (kind === "local" ? config.jobs.localTimeoutMs : config.jobs.qboTimeoutMs);
-  const graceMs = options.timeoutGraceMs ?? config.jobs.timeoutGraceMs;
   const controller = new AbortController();
+  let timer;
+  let settleLifetime;
+  // Registered before anything is awaited, so a shutdown or force-fail that lands while an
+  // extension job's timeout is still being read aborts this job and waits for it like any other.
+  // A shutdown stops the timeout (a cancel keeps it, so a cancel that never drains is still
+  // failed at the timeout): its failed write could otherwise land after the drain let the
+  // database close.
+  const entry = {
+    controller,
+    run: new Promise((resolve) => (settleLifetime = resolve)),
+    stopTimeout: () => clearTimeout(timer)
+  };
+  activeRuns.set(jobId, entry);
+  // An extension job's registered timeout replaces its lane's default; it is read before the
+  // timer starts.
+  const timeoutMs =
+    options.timeoutMs ??
+    (await extensionJobTimeoutMs(jobId).catch((err) => {
+      logger.warn({ err, jobId }, "Could not read an extension job's timeout");
+      return null;
+    })) ??
+    (kind === "local" ? config.jobs.localTimeoutMs : config.jobs.qboTimeoutMs);
+  const graceMs = options.timeoutGraceMs ?? config.jobs.timeoutGraceMs;
   const stopCancelWatch = watchForCancellation(
     jobId,
     controller,
     options.cancelPollMs ?? config.jobs.cancelPollMs
   );
-  let timer;
   const timedOut = new Promise((_resolve, reject) => {
+    // Already shut down while the timeout was read: no timer (runJob returns at once).
+    if (controller.signal.reason instanceof JobShutdownError) return;
     timer = setTimeout(() => {
       const err = new JobTimeoutError(timeoutMs);
       controller.abort(err);
@@ -238,15 +263,11 @@ export async function processJob({ jobId, kind }, options = {}) {
     }, timeoutMs);
     timer.unref?.();
   });
-  // A shutdown stops the timeout (a cancel keeps it, so a cancel that never drains is still
-  // failed at the timeout): its failed write could otherwise land after the drain let the
-  // database close.
-  const entry = { controller, run: null, stopTimeout: () => clearTimeout(timer) };
-  activeRuns.set(jobId, entry);
   const run = runJob(jobId, controller.signal, options);
   entry.run = run;
   const unregister = () => {
     if (activeRuns.get(jobId) === entry) activeRuns.delete(jobId);
+    settleLifetime();
   };
   // `entry.run` is read when the work settles: after a timeout it also covers the timeout write.
   run
@@ -320,6 +341,177 @@ function failureMessage(signal, err, fallback) {
   return err instanceof Error ? err.message : fallback;
 }
 
+// A handler's partial result as JSON, or null when it can't be serialized (a circular object, a
+// BigInt): the job must still reach a final status.
+function resultJson(value, jobId) {
+  if (value === undefined || value === null) return null;
+  try {
+    return JSON.stringify(value);
+  } catch (err) {
+    logger.error({ err, jobId }, "Extension job result could not be saved");
+    return JSON.stringify({ resultError: "The job's result could not be saved." });
+  }
+}
+
+// Ends an extension job that stopped because it was cancelled, keeping whatever partial result
+// its handler attached. A cancel that drained past the timeout was already failed with the timeout
+// flag: it still ends cancelled, without the timeout's error or flag.
+async function markExtensionCancelled(jobId, result) {
+  await query(
+    `UPDATE jobs
+     SET status = 'cancelled', error = NULL, completed_at = NOW(),
+         result = CASE WHEN $2::jsonb IS NOT NULL THEN $2::jsonb
+                       WHEN result->>'timedOut' = 'true' THEN NULL
+                       ELSE result END
+     WHERE id = $1 AND (status IN ${OPEN_STATUSES} OR ${TIMED_OUT_FAILED})`,
+    [jobId, result]
+  );
+}
+
+/**
+ * Runs an extension job: claims it, and for a handler that needsSandbox takes the connection
+ * lock and builds the sandbox target (a locked, sandbox-only client at minor version 75), then
+ * calls the handler's run(ctx). Its resolved { result, entityCount } completes the job; a throw
+ * fails it (an AppError's message is shown, any other error is logged and replaced by a generic
+ * message) and keeps the error's `result`; a cancel ends it cancelled with that result.
+ */
+async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWaitMs }) {
+  const jobId = job.id;
+  const { extension, kind, payload, handler } = resolveExtensionJob(job.config);
+  // Stopped before it started (a shutdown): stay pending and run after the restart.
+  if (signal.aborted) return;
+  if (!(await claim())) return;
+  if (!handler) {
+    await markJobFailed(
+      jobId,
+      `This server cannot run this job (missing extension ${extension}/${kind}).`
+    );
+    return;
+  }
+
+  let lock = null;
+  let started = false;
+  let targetUsed = false;
+  let closeTarget = async () => {};
+  try {
+    let target = null;
+    if (handler.needsSandbox) {
+      if (!job.connection_id) {
+        throw new AppError(409, "SANDBOX_REQUIRED", "This job needs a sandbox connection.");
+      }
+      const credentials = await getQboCredentials();
+      if (!credentials) throw qboNotConfiguredError();
+      lock = await acquireConnectionLock(job.connection_id, { waitMs: lockWaitMs });
+      const conn = await query("SELECT * FROM qbo_connections WHERE id = $1 AND team_id = $2", [
+        job.connection_id,
+        job.team_id
+      ]);
+      if (conn.rows.length === 0) {
+        throw new AppError(404, "NOT_FOUND", "The sandbox for this job was not found.");
+      }
+      if (conn.rows[0].disconnected_at) {
+        throw new AppError(409, "SANDBOX_DISCONNECTED", SANDBOX_DISCONNECTED_MESSAGE);
+      }
+      const client = buildLockedQboClient(conn.rows[0], credentials, {
+        signal,
+        minorVersion: "75"
+      });
+      ({ target, close: closeTarget } = createSandboxTarget(client, {
+        signal,
+        onUse: () => (targetUsed = true)
+      }));
+    }
+
+    const ctx = Object.freeze({
+      jobId,
+      teamId: job.team_id,
+      createdBy: job.created_by,
+      config: payload,
+      signal,
+      progress: (step, totalSteps, message) => emit({ step, totalSteps, message }),
+      target
+    });
+    // Stopped while waiting for the connection lock or building the target: never start the
+    // handler (a handler that only listens for "abort" would never hear one already sent).
+    if (signal.aborted) {
+      if (signal.reason instanceof JobShutdownError) {
+        // A shutdown before the work began: run it again after the restart.
+        await query(
+          "UPDATE jobs SET status = 'pending', started_at = NULL WHERE id = $1 AND status = 'running'",
+          [jobId]
+        );
+        return;
+      }
+      throw new Error("Stopped before it started");
+    }
+    started = true;
+    let outcome;
+    try {
+      outcome = await handler.run(ctx);
+    } finally {
+      await flushProgress();
+    }
+    // Stopped (cancel, timeout, shutdown or force-fail) while the handler was finishing: the job
+    // ends through the stop's own path, keeping what the handler returned, never "completed".
+    if (signal.aborted) {
+      throw Object.assign(new Error("Stopped"), { result: outcome?.result ?? null });
+    }
+    const result = outcome?.result ?? {};
+    const entityCount = Number.isInteger(outcome?.entityCount) ? outcome.entityCount : 0;
+    let completed;
+    try {
+      completed = await markJobCompleted(jobId, result, entityCount);
+    } catch (err) {
+      // An unserializable result: complete without it rather than leave the job running.
+      logger.error({ err, jobId }, "Extension job result could not be saved");
+      completed = await markJobCompleted(
+        jobId,
+        { resultError: "The job's result could not be saved." },
+        entityCount
+      );
+    }
+    if (!completed) {
+      // Not running any more: a cancel landed before its signal did.
+      await markExtensionCancelled(jobId, resultJson(result, jobId));
+    }
+  } catch (err) {
+    const partial = resultJson(err?.result, jobId);
+    // A cancel the watcher has not seen yet still wins over the error.
+    const cancelRequested =
+      isCancelled(signal) ||
+      (await query("SELECT status FROM jobs WHERE id = $1", [jobId]).then(
+        (r) => r.rows[0]?.status === "cancelling",
+        () => false
+      ));
+    if (cancelRequested) {
+      await markExtensionCancelled(jobId, partial);
+      return;
+    }
+    let message;
+    // Shown to users: an AppError's message or the stop's reason; anything else (a database or
+    // decryption error during setup included) is logged and replaced.
+    if (err instanceof AppError || signal.aborted) {
+      message = failureMessage(signal, err, "Job failed");
+    } else {
+      logger.error({ err, jobId, extension, kind }, "Extension job failed");
+      message = "The job failed. See the server log for details.";
+    }
+    await markJobFailed(jobId, message, { result: partial, upgradeTimedOut: partial !== null });
+  } finally {
+    // No call outlives the job: the target refuses new ones and calls still running finish
+    // before the lock is released.
+    await closeTarget();
+    // A job that really talked to the sandbox counts as connection activity (the token
+    // keepalive and health read last_used_at), whether it then succeeded or not.
+    if (targetUsed) {
+      await query("UPDATE qbo_connections SET last_used_at = NOW() WHERE id = $1", [
+        job.connection_id
+      ]).catch((err) => logger.warn({ err, jobId }, "Could not stamp sandbox activity"));
+    }
+    await releaseConnectionLock(lock);
+  }
+}
+
 async function runJob(jobId, signal, options = {}) {
   const jobResult = await query("SELECT * FROM jobs WHERE id = $1", [jobId]);
   if (jobResult.rows.length === 0) throw new Error(`Job ${jobId} not found`);
@@ -370,6 +562,12 @@ async function runJob(jobId, signal, options = {}) {
     return Boolean(claimed?.rowCount);
   };
   const lockWaitMs = options.lockWaitMs ?? config.jobs.lockWaitMs;
+
+  // Extension jobs carry their own config ({ extension, kind, payload }), not a scenario: they
+  // branch off before scenario parsing and the synthetic-data limits.
+  if (job.type === "extension") {
+    return runExtensionJob(job, signal, { emit, flushProgress, claim, lockWaitMs });
+  }
 
   let connectionLock = null;
 

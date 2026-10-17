@@ -30,7 +30,8 @@ export function createSandboxTarget(rawClient, { signal, onUse = () => {} } = {}
   const client = Object.create(rawClient, {
     request: {
       value: (...args) => {
-        onUse();
+        // A call made after the job was stopped is refused before anything is sent.
+        if (!signal?.aborted) onUse();
         return rawClient.request(...args);
       }
     }

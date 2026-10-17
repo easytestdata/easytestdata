@@ -118,12 +118,10 @@ function isCancelled(signal) {
  * load that stopped after the grace period is never lost. Returns whether the job was updated.
  */
 async function markJobFailed(jobId, message, options = {}) {
-  const { status = "failed", result = null, upgradeTimedOut = false, exceptCancelling } = options;
-  // exceptCancelling: a job a cancel reached is left for the cancel path to end.
-  const open = exceptCancelling ? "('pending', 'running')" : OPEN_STATUSES;
+  const { status = "failed", result = null, upgradeTimedOut = false } = options;
   const guard = upgradeTimedOut
-    ? `(status IN ${open} OR ${TIMED_OUT_FAILED})`
-    : `status IN ${open}`;
+    ? `(status IN ${OPEN_STATUSES} OR ${TIMED_OUT_FAILED})`
+    : `status IN ${OPEN_STATUSES}`;
   const updated = await query(
     `UPDATE jobs SET status = $1, error = $2, result = COALESCE($3, result), completed_at = NOW()
      WHERE id = $4 AND ${guard}`,
@@ -349,30 +347,54 @@ const UNSAVED_RESULT = { resultError: "The job's result could not be saved." };
 // circular object, a BigInt) is replaced by UNSAVED_RESULT: the job must still reach a final status.
 function resultJson(value, jobId) {
   if (value === undefined || value === null) return null;
+  let json;
   try {
-    return JSON.stringify(value);
+    json = JSON.stringify(value);
   } catch (err) {
     logger.error({ err, jobId }, "Extension job result could not be saved");
     return JSON.stringify(UNSAVED_RESULT);
   }
+  // A function, a symbol or a toJSON() returning undefined serializes to nothing.
+  if (json === undefined) {
+    logger.error({ jobId }, "Extension job result could not be saved");
+    return JSON.stringify(UNSAVED_RESULT);
+  }
+  return json;
 }
 
 // Ends an extension job that stopped because it was cancelled, keeping whatever partial result
 // its handler attached. A cancel that drained past the timeout was already failed with the timeout
 // flag: it still ends cancelled, without the timeout's error or flag.
-// onlyCancelling: end it only if a cancel reached it (the failure path lost to that cancel).
-async function markExtensionCancelled(jobId, result, { onlyCancelling = false } = {}) {
-  const guard = onlyCancelling
-    ? "status = 'cancelling'"
-    : `(status IN ${OPEN_STATUSES} OR ${TIMED_OUT_FAILED})`;
+async function markExtensionCancelled(jobId, result) {
   await query(
     `UPDATE jobs
      SET status = 'cancelled', error = NULL, completed_at = NOW(),
          result = CASE WHEN $2::jsonb IS NOT NULL THEN $2::jsonb
                        WHEN result->>'timedOut' = 'true' THEN NULL
                        ELSE result END
-     WHERE id = $1 AND ${guard}`,
+     WHERE id = $1 AND (status IN ${OPEN_STATUSES} OR ${TIMED_OUT_FAILED})`,
     [jobId, result]
+  );
+}
+
+// Fails an extension job, or ends it cancelled when a cancel reached the row first (one the
+// watcher had not seen yet): decided by this one update, so the two can't interleave. A partial
+// result also upgrades a job already failed at its timeout, like markJobFailed's upgradeTimedOut.
+async function markExtensionFailed(jobId, message, result) {
+  const guard =
+    result !== null
+      ? `(status IN ${OPEN_STATUSES} OR ${TIMED_OUT_FAILED})`
+      : `status IN ${OPEN_STATUSES}`;
+  await query(
+    `UPDATE jobs
+     SET status = CASE WHEN status = 'cancelling' THEN 'cancelled' ELSE 'failed' END,
+         error = CASE WHEN status = 'cancelling' THEN NULL ELSE $2 END,
+         result = CASE WHEN $3::jsonb IS NOT NULL THEN $3::jsonb
+                       WHEN status = 'cancelling' AND result->>'timedOut' = 'true' THEN NULL
+                       ELSE result END,
+         completed_at = NOW()
+     WHERE id = $1 AND ${guard}`,
+    [jobId, message, result]
   );
 }
 
@@ -488,13 +510,7 @@ async function runExtensionJob(job, signal, { emit, flushProgress, claim, lockWa
       logger.error({ err, jobId, extension, kind }, "Extension job failed");
       message = "The job failed. See the server log for details.";
     }
-    const failed = await markJobFailed(jobId, message, {
-      result: partial,
-      upgradeTimedOut: partial !== null,
-      exceptCancelling: true
-    });
-    // A cancel the watcher had not seen yet wins over the error, decided by that one update.
-    if (!failed) await markExtensionCancelled(jobId, partial, { onlyCancelling: true });
+    await markExtensionFailed(jobId, message, partial);
   } finally {
     // No call outlives the job: the target refuses new ones and calls still running finish
     // before the lock is released.

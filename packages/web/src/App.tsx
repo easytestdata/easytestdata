@@ -173,6 +173,23 @@ export function App() {
                   <ProductBrandProvider value={brand}>
                     <BrowserRouter>
                       <Routes>
+                        {/* Public extension pages first: when a signed-in pattern ties with a
+                            public one (an optional segment, a parameter), React Router picks the
+                            first declared, so a public page is never sent to the login page. */}
+                        {publicRoutes.map((route) => {
+                          const Element = route.element;
+                          return (
+                            <Route
+                              key={route.path}
+                              path={route.path}
+                              element={
+                                <Suspense fallback={<RouteLoadingFallback />}>
+                                  <Element />
+                                </Suspense>
+                              }
+                            />
+                          );
+                        })}
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/invite" element={<InviteRoute />} />
                         {/* Main app routes */}
@@ -219,20 +236,6 @@ export function App() {
                           <Route path="/admin/jobs/:id" element={<JobDetailPage />} />
                           <Route path="/admin/connections" element={<ConnectionHealthPage />} />
                         </Route>
-                        {publicRoutes.map((route) => {
-                          const Element = route.element;
-                          return (
-                            <Route
-                              key={route.path}
-                              path={route.path}
-                              element={
-                                <Suspense fallback={<RouteLoadingFallback />}>
-                                  <Element />
-                                </Suspense>
-                              }
-                            />
-                          );
-                        })}
                         <Route path="*" element={<Navigate to="/home" replace />} />
                       </Routes>
                     </BrowserRouter>

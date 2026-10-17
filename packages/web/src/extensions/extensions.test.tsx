@@ -30,7 +30,9 @@ vi.mock("@easytestdata/web-extensions", async () => {
       logo: ({ className }) => <svg aria-label="Extension logo" className={className} />,
       routes: [
         { path: "/reports", element: () => <div>reports-page</div> },
-        { path: "/reports/lazy", element: ReportsPage }
+        { path: "/reports/lazy", element: ReportsPage },
+        // An optional segment that also matches the public /p/connect: the public page must win.
+        { path: "/p?/connect", element: () => <div>protected-optional-page</div> }
       ],
       navItems: [{ path: "/reports", label: "Reports", icon: ChartNoAxesCombined }],
       publicRoutes: [{ path: "/p/connect", element: () => <div>public-connect-page</div> }]
@@ -82,6 +84,7 @@ describe("web extensions", () => {
     renderAt("/p/connect");
     expect(await screen.findByText("public-connect-page")).toBeTruthy();
     expect(screen.queryByText("login-page")).toBeNull();
+    expect(screen.queryByText("protected-optional-page")).toBeNull();
     expect(window.location.pathname).toBe("/p/connect");
     // Outside the app layout, even for a signed-in user.
     expect(screen.queryByRole("navigation")).toBeNull();

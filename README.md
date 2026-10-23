@@ -125,6 +125,11 @@ downloads and rollback; Cloud adds teams. Whichever you pick, only QBO sandbox c
 connected: Intuit development keys can't authorize
 production companies, and the QBO client refuses any host but the sandbox API.
 
+Need a copy of your real books instead of generated ones?
+[CopyMyBooks](https://copymybooks.com), a separate hosted service from the same team, copies a
+real QuickBooks Online company into a sandbox once the company's admin approves. It isn't part
+of this repository.
+
 ### Library
 
 ```bash

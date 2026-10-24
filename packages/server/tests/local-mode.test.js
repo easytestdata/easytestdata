@@ -357,11 +357,12 @@ describe("local mode server", () => {
   });
 
   it("has no rate limit a cross-site page could exhaust (all requests share 127.0.0.1)", async () => {
+    // 310 requests, past Cloud's 300-per-minute bucket: allow for a loaded machine or runner.
     for (let i = 0; i < 310; i++) {
       const res = await local().get("/api/v1/templates/presets");
       if (res.status !== 200) throw new Error(`request ${i}: ${res.status}`);
     }
-  });
+  }, 30_000);
 
   it("does not mount sign-in, teams, invites or admin", async () => {
     const write = { "x-easytestdata": "1" };

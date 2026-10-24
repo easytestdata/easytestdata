@@ -69,7 +69,10 @@ describe("job downloads", () => {
     fireEvent.click(screen.getByRole("button", { name: "Download CSV (zip)" }));
     await waitFor(() => expect(apiMocks.downloadJob).toHaveBeenCalledWith("job-1", "csv"));
 
-    fireEvent.click(screen.getByRole("button", { name: "Download JSON" }));
+    // Both buttons stay disabled until that download settles; a click before then is ignored.
+    const jsonButton = screen.getByRole("button", { name: "Download JSON" });
+    await waitFor(() => expect(jsonButton).toBeEnabled());
+    fireEvent.click(jsonButton);
     await waitFor(() => expect(apiMocks.downloadJob).toHaveBeenCalledWith("job-1", "json"));
   });
 

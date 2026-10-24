@@ -14,6 +14,8 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    setupFiles: "./src/test/setup.ts"
+    setupFiles: "./src/test/setup.ts",
+    // Tests taking 0.4-1 s alone can pass 5 s while `pnpm run check` tests every package (#53).
+    testTimeout: 15_000
   }
 });

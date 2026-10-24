@@ -165,6 +165,38 @@ function completedLoad(id: string, connectionId: string) {
   };
 }
 
+// The Load and Generate buttons stay disabled while an estimate is in flight, and the previous
+// numbers stay on screen meanwhile, so "~802 records" alone does not mean a click will launch.
+// The scenario preset arrives asynchronously and starts a new estimate; on a slow runner that can
+// happen after the first estimate is shown, and a click then does nothing (#51). Wait for the
+// estimate of the settled form (the mocked preset's 20 customers) to finish first.
+async function waitForSettledEstimate() {
+  await waitFor(
+    () => {
+      expect(clientMocks.estimateJob).toHaveBeenLastCalledWith(
+        expect.objectContaining({ config: expect.objectContaining({ customerCount: 20 }) })
+      );
+      expect(screen.getByText("~802 records").closest("[aria-busy]")).toHaveAttribute(
+        "aria-busy",
+        "false"
+      );
+    },
+    { timeout: 3000 }
+  );
+}
+
+async function findReadyButton(name: RegExp) {
+  await waitForSettledEstimate();
+  return waitFor(
+    () => {
+      const button = screen.getByRole("button", { name });
+      expect(button).toBeEnabled();
+      return button;
+    },
+    { timeout: 3000 }
+  );
+}
+
 describe("HomePage actions", () => {
   beforeEach(() => {
     hookState.connections = [
@@ -419,8 +451,7 @@ describe("HomePage actions", () => {
     });
     expect(checkbox).not.toBeChecked();
     fireEvent.click(checkbox);
-    await screen.findByText("~802 records");
-    fireEvent.click(screen.getByRole("button", { name: /Load into QuickBooks/ }));
+    fireEvent.click(await findReadyButton(/Load into QuickBooks/));
 
     expect(mutationMocks.createJob.mutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({ config: expect.objectContaining({ purgeMode: "generated" }) })
@@ -438,11 +469,12 @@ describe("HomePage actions", () => {
     fireEvent.click(
       screen.getByRole("checkbox", { name: "Remove existing test data (tagged EZTD) first" })
     );
-    await screen.findByText("~802 records");
-    fireEvent.click(screen.getByRole("button", { name: /Load into QuickBooks/ }));
+    fireEvent.click(await findReadyButton(/Load into QuickBooks/));
 
-    expect(mutationMocks.createJob.mutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ config: expect.objectContaining({ purgeMode: "generated" }) })
+    await waitFor(() =>
+      expect(mutationMocks.createJob.mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ config: expect.objectContaining({ purgeMode: "generated" }) })
+      )
     );
   });
 
@@ -450,8 +482,7 @@ describe("HomePage actions", () => {
     renderWithClient(<HomePage />);
 
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-    await screen.findByText("~802 records");
-    fireEvent.click(screen.getByRole("button", { name: /Load into QuickBooks/ }));
+    fireEvent.click(await findReadyButton(/Load into QuickBooks/));
 
     const body = mutationMocks.createJob.mutateAsync.mock.calls[0]?.[0];
     expect(body).toMatchObject({
@@ -474,9 +505,10 @@ describe("HomePage actions", () => {
 
     renderWithClient(<HomePage />);
 
-    await screen.findByText("~802 records");
-    const loadButton = screen.getByRole("button", { name: /Load into QuickBooks/ });
+    const loadButton = await findReadyButton(/Load into QuickBooks/);
     fireEvent.click(loadButton);
+    await waitFor(() => expect(mutationMocks.createJob.mutateAsync).toHaveBeenCalledTimes(1));
+    // A second click while job creation is still pending must not start another job.
     fireEvent.click(loadButton);
 
     expect(mutationMocks.createJob.mutateAsync).toHaveBeenCalledTimes(1);
@@ -509,8 +541,7 @@ describe("HomePage actions", () => {
     const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 
     renderWithClient(<HomePage />);
-    await screen.findByText("~802 records");
-    fireEvent.click(screen.getByRole("button", { name: /Load into QuickBooks/ }));
+    fireEvent.click(await findReadyButton(/Load into QuickBooks/));
     fireEvent.click(await screen.findByRole("button", { name: "Roll back" }));
 
     await waitFor(() => expect(sharedApi.rollbackJob).toHaveBeenCalledWith("job-load"));
@@ -753,8 +784,7 @@ describe("HomePage actions", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Make sample files/ }));
     fireEvent.click(screen.getByRole("button", { name: "Retail / eCommerce" }));
 
-    await screen.findByText("~802 records");
-    const generateButton = screen.getByRole("button", { name: /Generate sample files/ });
+    const generateButton = await findReadyButton(/Generate sample files/);
     fireEvent.click(generateButton);
     fireEvent.click(generateButton);
 
@@ -862,7 +892,8 @@ describe("HomePage load readiness", () => {
     hookState.connections = [{ ...acme, tokenHealth: "expired" }];
     renderWithClient(<HomePage />);
 
-    await screen.findByText("~802 records");
+    // Once no estimate is in flight, only the expired token can be what disables the button.
+    await waitForSettledEstimate();
     expect(screen.getByText("QuickBooks connection expired")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Load into QuickBooks/ })).toBeDisabled();
   });
@@ -878,8 +909,7 @@ describe("HomePage load readiness", () => {
     // Switch to the sandbox that was never loaded: the checkbox goes away ...
     fireEvent.click(screen.getByText("Other Co"));
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-    await screen.findByText("~802 records");
-    fireEvent.click(screen.getByRole("button", { name: /Load into QuickBooks/ }));
+    fireEvent.click(await findReadyButton(/Load into QuickBooks/));
 
     // ... and so does the purge it would have carried over.
     await waitFor(() => expect(mutationMocks.createJob.mutateAsync).toHaveBeenCalledTimes(1));
@@ -903,8 +933,7 @@ describe("HomePage load readiness", () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Make sample files/ }));
-    await screen.findByText("~802 records");
-    fireEvent.click(screen.getByRole("button", { name: /Generate sample files/ }));
+    fireEvent.click(await findReadyButton(/Generate sample files/));
     await waitFor(() =>
       expect(mutationMocks.createJob.mutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({ type: "generate" })

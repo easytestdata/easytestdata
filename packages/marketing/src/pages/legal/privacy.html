@@ -9,9 +9,9 @@ og_type: website
   <section class="py-16 md:py-20 bg-white">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 prose prose-slate">
       <h1>Privacy Policy</h1>
-      <p class="text-sm text-slate-500">Effective Date: September 24, 2026</p>
+      <p class="text-sm text-slate-500">Effective Date: October 23, 2026</p>
       <p>This policy covers the easytestdata.com website and EasyTestData Cloud. Copies of EasyTestData that you run yourself (for example with <code>npx easytestdata ui</code> on your own computer) send nothing to us and are not covered here. The <a href="/playground">playground</a> generates data entirely in your browser; nothing you generate there is sent to us.</p>
-      <p>EasyTestData is free. We do not sell anything, do not collect payment information, and do not run product analytics or advertising trackers.</p>
+      <p>EasyTestData is free. We do not sell anything, do not collect payment information, and do not run advertising trackers or product analytics in EasyTestData Cloud. To see how people find easytestdata.com, we count visits to the website with Cloudflare Web Analytics, which sets no cookies and doesn't follow you to other sites (see <a href="#cookies">section 5</a>).</p>
 
       <h2>1. Information We Collect</h2>
       <div class="overflow-x-auto">
@@ -49,17 +49,17 @@ og_type: website
         <table>
           <thead><tr><th>Provider</th><th>Data Shared</th><th>Purpose</th></tr></thead>
           <tbody>
-            <tr><td>Cloudflare</td><td>IP address, request metadata</td><td>Content delivery, DNS, security and bot protection</td></tr>
+            <tr><td>Cloudflare</td><td>IP address, request metadata; on easytestdata.com, the page visited, the site you came from, country, browser and device type</td><td>Content delivery, DNS, security and bot protection; counting visits to easytestdata.com (Web Analytics)</td></tr>
             <tr><td>Sentry (only if error tracking is enabled on the deployment)</td><td>Error reports, request metadata</td><td>Error tracking, not analytics</td></tr>
             <tr><td>Intuit (QuickBooks Online API)</td><td>OAuth tokens, generated test data</td><td>Loading and purging data in your QBO sandbox</td></tr>
             <tr><td>Google, GitHub, Intuit sign-in</td><td>OAuth profile (if you choose that sign-in method)</td><td>Authentication</td></tr>
           </tbody>
         </table>
       </div>
-      <p>We do not use analytics providers, advertising networks or payment processors, and we do not sell your data to third parties.</p>
+      <p>Apart from Cloudflare Web Analytics on easytestdata.com, we do not use analytics providers. We use no advertising networks or payment processors, and we do not sell your data to third parties.</p>
 
-      <h2>5. Cookies and Local Storage</h2>
-      <p>We use browser local storage to persist authentication tokens (JWT access and refresh tokens). We do not use analytics or advertising cookies, so there is no cookie banner.</p>
+      <h2 id="cookies">5. Cookies and Local Storage</h2>
+      <p>We use browser local storage to persist authentication tokens (JWT access and refresh tokens). We do not use analytics or advertising cookies, so there is no cookie banner. Cloudflare Web Analytics, which counts visits to easytestdata.com, uses no cookies or local storage and builds no profile of you.</p>
 
       <h2>6. Data Retention</h2>
       <ul>

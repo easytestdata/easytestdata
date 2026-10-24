@@ -58,10 +58,10 @@
     "test": "tsc -p tests"
   },
   "dependencies": {
-    "zod": "^4.6.6"
+    "zod": "^4.6.7"
   },
   "peerDependencies": {
-    "@tanstack/react-query": "^5.104.2"
+    "@tanstack/react-query": "^5.104.5"
   },
   "peerDependenciesMeta": {
     "@tanstack/react-query": {
@@ -69,7 +69,7 @@
     }
   },
   "devDependencies": {
-    "@tanstack/react-query": "^5.104.2",
+    "@tanstack/react-query": "^5.104.5",
     "typescript": "^7.0.2"
   }
 }

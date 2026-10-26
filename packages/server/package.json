@@ -45,7 +45,7 @@
     "@easytestdata/core": "workspace:*",
     "@easytestdata/qbo-client": "workspace:*",
     "@easytestdata/shared": "workspace:*",
-    "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite": "^0.5.11",
     "@sentry/node": "^11.8.0",
     "compression": "^1.8.2",
     "cors": "^2.8.5",

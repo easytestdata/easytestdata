@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@easytestdata/core": "workspace:*",
-    "axios": "^1.20.0"
+    "axios": "^1.21.0"
   },
   "devDependencies": {
     "vitest": "^5.0.5"
